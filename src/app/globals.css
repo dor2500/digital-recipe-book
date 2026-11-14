@@ -1,0 +1,323 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --paper: #f6efe1;
+  --paper-shade: rgba(74, 52, 30, 0.22);
+  --ink: #2b211a;
+  --leather: #5a1f1b;
+  --gilt: #c9a253;
+
+  /* Fine fibre noise, tinted brown. Reused for paper, leather and wood. */
+  --noise: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .32 0 0 0 0 .22 0 0 0 0 .12 0 0 0 .09 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  /* Long horizontal streaks: wood grain. */
+  --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='900' height='300'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='.003 .09' numOctaves='4' seed='7' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .12 0 0 0 0 .06 0 0 0 0 .02 0 0 0 .55 -.12'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>");
+}
+
+html,
+body {
+  height: 100%;
+}
+
+/* ------------------------------------------------------------ the table */
+
+.table-surface {
+  color: var(--ink);
+  background-color: #563620;
+  background-image:
+    radial-gradient(ellipse at 50% 45%, rgba(255, 214, 160, 0.16), transparent 60%),
+    radial-gradient(ellipse at 50% 50%, transparent 55%, rgba(0, 0, 0, 0.55) 100%),
+    repeating-linear-gradient(
+      180deg,
+      transparent 0 178px,
+      rgba(0, 0, 0, 0.38) 178px 180px,
+      rgba(255, 220, 180, 0.06) 180px 181px
+    ),
+    var(--grain),
+    var(--noise),
+    linear-gradient(180deg, #6a4327, #4b2e1a);
+  background-size: auto, auto, auto, 900px 300px, 220px 220px, auto;
+}
+
+/* ----------------------------------------------------- book & flip engine */
+
+.flipbook {
+  margin: 0 auto;
+}
+
+.book-base {
+  position: absolute;
+  top: -10px;
+  bottom: -16px;
+  margin: 0 -12px;
+  border-radius: 8px;
+  background-color: var(--leather);
+  background-image:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.25), transparent 6%, transparent 94%, rgba(0, 0, 0, 0.25)),
+    var(--noise);
+  box-shadow:
+    0 40px 70px -20px rgba(0, 0, 0, 0.7),
+    0 18px 30px -12px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+/* The page block: stacked page edges visible under the open pages. */
+.book-base::before {
+  content: "";
+  position: absolute;
+  inset: 8px 7px 7px 7px;
+  border-radius: 3px;
+  background: repeating-linear-gradient(180deg, #efe5cf 0 1px, #d3c3a2 1px 2px);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* -------------------------------------------------------------- pages */
+
+.page-shell {
+  /* react-pageflip positions and sizes this element. */
+  background: transparent;
+}
+
+.page {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  container-type: size;
+}
+
+.page__content {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  padding: 8% 9% 9%;
+}
+
+.page--paper,
+.page--endpaper {
+  background-color: var(--paper);
+  background-image:
+    var(--noise),
+    radial-gradient(ellipse at 50% 40%, rgba(255, 255, 255, 0.55), transparent 70%);
+}
+
+/* Gutter shading toward the spine + a soft sheen near the fore-edge. */
+.page--paper::after,
+.page--endpaper::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+.page--left {
+  border-radius: 6px 2px 2px 6px;
+}
+.page--left::after {
+  background:
+    linear-gradient(to left, var(--paper-shade), rgba(74, 52, 30, 0.06) 7%, transparent 14%),
+    linear-gradient(to right, rgba(74, 52, 30, 0.12), transparent 3%);
+}
+.page--right {
+  border-radius: 2px 6px 6px 2px;
+}
+.page--right::after {
+  background:
+    linear-gradient(to right, var(--paper-shade), rgba(74, 52, 30, 0.06) 7%, transparent 14%),
+    linear-gradient(to left, rgba(74, 52, 30, 0.12), transparent 3%);
+}
+.page--single {
+  border-radius: 2px 6px 6px 2px;
+}
+.page--single::after {
+  background: linear-gradient(to right, rgba(74, 52, 30, 0.18), transparent 6%);
+}
+
+.page--endpaper .page__content {
+  border: 10px solid transparent;
+  border-image: repeating-linear-gradient(45deg, #b98f6a 0 6px, #e7d7bd 6px 12px) 10;
+  margin: 6%;
+  height: 88%;
+}
+
+.page--cover {
+  border-radius: 4px 8px 8px 4px;
+  background-color: var(--leather);
+  background-image:
+    radial-gradient(ellipse at 40% 30%, rgba(255, 255, 255, 0.12), transparent 60%),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.35), transparent 5%),
+    var(--noise);
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.45);
+}
+.page--cover .page__content {
+  padding: 9%;
+}
+
+.cover-frame {
+  border: 2px solid rgba(201, 162, 83, 0.55);
+  outline: 1px solid rgba(201, 162, 83, 0.35);
+  outline-offset: 5px;
+  border-radius: 2px;
+}
+
+.gilt-text {
+  background: linear-gradient(170deg, #f3dc97 0%, #c9a253 45%, #8d6a2c 75%, #e6c97e 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.45));
+}
+
+.page__folio {
+  position: absolute;
+  bottom: 3.6%;
+  z-index: 3;
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: clamp(10px, 2.2cqw, 13px);
+  font-style: italic;
+  color: #8a7660;
+}
+.page__folio--left {
+  left: 9%;
+}
+.page__folio--right,
+.page__folio--single {
+  right: 9%;
+}
+
+/* Long ingredient lists / methods scroll inside the page instead of overflowing. */
+.page-scroll {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(92, 74, 59, 0.3) transparent;
+  padding-right: 4px;
+}
+
+.toc-leader {
+  border-bottom: 1.5px dotted rgba(92, 74, 59, 0.45);
+  transform: translateY(-0.28em);
+  min-width: 1.5rem;
+}
+
+.photo-frame {
+  border-radius: 2px;
+  box-shadow:
+    0 0 0 1px rgba(43, 33, 26, 0.08),
+    0 6px 14px -6px rgba(43, 33, 26, 0.45);
+}
+
+.chefs-note {
+  background-color: #fbf3c6;
+  background-image: repeating-linear-gradient(180deg, transparent 0 1.45em, rgba(120, 140, 180, 0.22) 1.45em calc(1.45em + 1px));
+  box-shadow: 0 6px 12px -6px rgba(0, 0, 0, 0.35);
+}
+.chefs-note .tape {
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  width: 72px;
+  height: 20px;
+  transform: translateX(-50%) rotate(2deg);
+  background: rgba(240, 232, 210, 0.75);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+/* Component classes live in a layer so Tailwind utilities (w-28, h-9...) still win. */
+@layer components {
+/* ------------------------------------------------------------ bookmarks */
+
+.bookmark-tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-image:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.07) 0 2px, transparent 2px 4px),
+    linear-gradient(rgba(255, 255, 255, 0.12), rgba(0, 0, 0, 0.12));
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.12),
+    2px 3px 6px rgba(0, 0, 0, 0.35);
+}
+.bookmark-tab--side {
+  border-radius: 0 7px 7px 0;
+}
+.bookmark-tab--top {
+  border-radius: 7px 7px 0 0;
+  align-items: flex-start;
+  padding-top: 0.55rem;
+}
+.bookmark-tab[aria-current="true"] {
+  filter: brightness(1.08);
+}
+
+/* ---------------------------------------------------- the recipe card */
+
+.recipe-card {
+  background-color: #fffcf3;
+  background-image:
+    linear-gradient(90deg, transparent 0 1.6rem, rgba(205, 70, 70, 0.35) 1.6rem calc(1.6rem + 1px), transparent calc(1.6rem + 1px)),
+    var(--noise);
+}
+.recipe-card__header {
+  border-bottom: 3px double rgba(190, 60, 60, 0.4);
+}
+.recipe-card__body {
+  background-image: repeating-linear-gradient(180deg, transparent 0 31px, rgba(90, 130, 180, 0.16) 31px 32px);
+}
+
+.card-label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #5c4a3b;
+}
+
+.card-input {
+  width: 100%;
+  border: 0;
+  border-bottom: 1.5px solid rgba(138, 118, 96, 0.45);
+  background: rgba(255, 255, 255, 0.45);
+  padding: 0.4rem 0.5rem;
+  border-radius: 3px 3px 0 0;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+.card-input::placeholder {
+  color: rgba(138, 118, 96, 0.7);
+}
+.card-input:focus {
+  border-bottom-color: var(--leather);
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.btn-leather {
+  color: #f6efe1;
+  background-color: var(--leather);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(0, 0, 0, 0.15)), var(--noise);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 6px 16px -6px rgba(0, 0, 0, 0.6);
+  transition: background-color 0.15s;
+}
+.btn-leather:hover {
+  background-color: #6d2621;
+}
+.btn-leather:disabled {
+  opacity: 0.7;
+}
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
