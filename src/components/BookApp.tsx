@@ -44,7 +44,7 @@ export default function BookApp() {
   const pageWidth = Math.floor(
     portrait
       ? Math.min(stage.width - 24, (stage.height - 56) * PAGE_RATIO, MAX_PAGE_WIDTH)
-      : Math.min((stage.width - 120) / 2, (stage.height - 32) * PAGE_RATIO, MAX_PAGE_WIDTH),
+      : Math.min((stage.width - 48) / 2, (stage.height - 64) * PAGE_RATIO, MAX_PAGE_WIDTH),
   );
   const ready = !loading && stage.width > 0 && pageWidth > 120;
   const lastPage = layout.pages.length - 1;
@@ -186,13 +186,12 @@ export default function BookApp() {
             className="relative"
             // The flip engine lays pages out left-to-right; keep its box LTR.
             dir="ltr"
-            style={{ width: spreadWidth, height: pageHeight, marginTop: portrait ? 36 : 0 }}
+            style={{ width: spreadWidth, height: pageHeight, marginTop: 36 }}
           >
             <div dir="rtl">
               <BookmarkTabs
                 categoryPage={layout.categoryPage}
                 active={categoryAtPage(layout, page)}
-                orientation={portrait ? "top" : "side"}
                 onSelect={goTo}
               />
             </div>

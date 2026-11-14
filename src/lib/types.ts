@@ -3,28 +3,59 @@
  * reads and writes exactly these shapes.
  */
 
-/** Internal category keys (stable, also stored in the database). */
-/** Book order: sections appear in this order, each with its own tab. */
+/**
+ * Internal section keys (stable, also stored in the database).
+ * Book order: sections appear in this order, each with its own tab.
+ */
 export const CATEGORIES = [
   "Breakfast",
+  "Starters",
+  "Soups",
   "Mains",
+  "Pizza",
+  "Pasta",
   "Sides",
+  "Sauces",
   "Breads",
   "Baking",
   "Vegan",
   "Desserts",
+  "Drinks",
 ] as const;
 export type Category = (typeof CATEGORIES)[number];
 
-/** What readers see. */
+/** Full section name: contents page, recipe pages, the form. */
 export const CATEGORY_LABEL: Record<Category, string> = {
   Breakfast: "ארוחות בוקר",
+  Starters: "ראשונות ומתאבנים",
+  Soups: "מרקים",
   Mains: "עיקריות",
+  Pizza: "פיצות וטאבון",
+  Pasta: "פסטה בעבודת יד",
   Sides: "תוספות",
+  Sauces: "ממרחים ורטבים",
   Breads: "לחמים",
   Baking: "מאפים",
   Vegan: "טבעוני",
   Desserts: "קינוחים",
+  Drinks: "משקאות ואלכוהול",
+};
+
+/** Short name that fits on a bookmark tab. */
+export const CATEGORY_TAB: Record<Category, string> = {
+  Breakfast: "בוקר",
+  Starters: "ראשונות",
+  Soups: "מרקים",
+  Mains: "עיקריות",
+  Pizza: "פיצות",
+  Pasta: "פסטה",
+  Sides: "תוספות",
+  Sauces: "רטבים",
+  Breads: "לחמים",
+  Baking: "מאפים",
+  Vegan: "טבעוני",
+  Desserts: "קינוחים",
+  Drinks: "משקאות",
 };
 
 export interface Ingredient {

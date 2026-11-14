@@ -251,9 +251,6 @@ body {
     inset 0 0 0 1px rgba(0, 0, 0, 0.12),
     2px 3px 6px rgba(0, 0, 0, 0.35);
 }
-.bookmark-tab--side {
-  border-radius: 7px 0 0 7px;
-}
 .bookmark-tab--top {
   border-radius: 7px 7px 0 0;
   align-items: flex-start;
