@@ -199,7 +199,7 @@ export function RecipeFormModal({ open, recipe, onClose, onSubmit }: Props) {
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-50 overflow-y-auto bg-black/55 backdrop-blur-[2px]"
+          className="fixed inset-0 z-50 overflow-y-auto bg-black/55 backdrop-blur-md"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}

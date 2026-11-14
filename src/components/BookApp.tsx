@@ -22,6 +22,16 @@ const PAGE_RATIO = 0.75; // keep in sync with Book.PAGE_RATIO
 const MAX_PAGE_WIDTH = 560;
 const LANDSCAPE_MIN_STAGE = 760;
 
+type ThemeId = "wood" | "marble" | "night" | "sage";
+
+const THEMES: { id: ThemeId; label: string; swatch: string }[] = [
+  { id: "wood", label: "עץ קלאסי", swatch: "#5a3721" },
+  { id: "marble", label: "שיש בהיר", swatch: "#e5dfd4" },
+  { id: "night", label: "מטבח לילי", swatch: "#182233" },
+  { id: "sage", label: "כפרי זית", swatch: "#3d4937" },
+];
+const THEME_STORAGE_KEY = "torfim_theme";
+
 export default function BookApp() {
   const { recipes, loading, error, backendLabel, userId, addRecipe, updateRecipe, deleteRecipe } =
     useRecipes();
@@ -37,7 +47,20 @@ export default function BookApp() {
   const [toast, setToast] = useState<string | null>(null);
   /** Bumped on edits so the book re-reads page contents. */
   const [contentVersion, setContentVersion] = useState(0);
+  const [theme, setTheme] = useState<ThemeId>("wood");
   const pendingFlip = useRef<number | null>(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem(THEME_STORAGE_KEY) as ThemeId | null;
+    if (saved && THEMES.some((t) => t.id === saved)) {
+      setTheme(saved);
+    }
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
+  }, [theme]);
 
   // --- Fit the book to the free space ---------------------------------
   const portrait = stage.width > 0 && stage.width < LANDSCAPE_MIN_STAGE;
@@ -146,31 +169,68 @@ export default function BookApp() {
         : `עמודים ${page}–${page + 1} מתוך ${lastPage - 1}`;
 
   return (
-    <main className="flex h-[100dvh] flex-col overflow-hidden">
-      <header className="flex items-center justify-between gap-3 px-4 pt-3 sm:px-8 sm:pt-5">
+    <main className="relative flex h-[100dvh] flex-col overflow-hidden">
+      <div aria-hidden className="theme-blur-backdrop" />
+
+      <header className="relative z-20 flex items-center justify-between gap-3 px-4 pt-3 sm:px-8 sm:pt-5">
         <button type="button" onClick={() => goTo(layout.tocPage)} className="group flex items-baseline gap-2 text-start">
-          <span className="font-serif text-xl font-bold text-paper drop-shadow sm:text-2xl">
+          <span
+            className="font-serif text-xl font-bold drop-shadow sm:text-2xl"
+            style={{ color: "var(--ui-ink)" }}
+          >
             טורפים את המטבח <span aria-hidden>🌶️🔥</span>
           </span>
-          <span className="hidden font-sans text-sm text-paper/60 transition group-hover:text-paper sm:inline">
+          <span
+            className="hidden font-sans text-sm opacity-65 transition group-hover:opacity-100 sm:inline"
+            style={{ color: "var(--ui-ink)" }}
+          >
             תוכן העניינים
           </span>
         </button>
-        <motion.button
-          type="button"
-          onClick={openNewRecipe}
-          whileHover={{ y: -1 }}
-          whileTap={{ scale: 0.97 }}
-          className="btn-leather flex shrink-0 items-center gap-2 rounded-full px-4 py-2 font-sans text-sm font-bold"
-        >
-          <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
-            <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-          </svg>
-          <span>הוספת מתכון</span>
-        </motion.button>
+
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div
+            className="theme-glass flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 shadow-sm"
+            role="group"
+            aria-label="ערכת נושא"
+            title="בחר ערכת נושא"
+          >
+            <span className="hidden text-xs font-medium opacity-80 md:inline">ערכת נושא</span>
+            {THEMES.map((t) => {
+              const active = theme === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setTheme(t.id)}
+                  title={t.label}
+                  aria-label={t.label}
+                  aria-pressed={active}
+                  className={`h-4 w-4 rounded-full border transition-transform ${
+                    active ? "scale-125 ring-2 ring-gilt border-white" : "border-white/40 opacity-80 hover:scale-110 hover:opacity-100"
+                  }`}
+                  style={{ backgroundColor: t.swatch }}
+                />
+              );
+            })}
+          </div>
+
+          <motion.button
+            type="button"
+            onClick={openNewRecipe}
+            whileHover={{ y: -1 }}
+            whileTap={{ scale: 0.97 }}
+            className="btn-leather flex shrink-0 items-center gap-2 rounded-full px-4 py-2 font-sans text-sm font-bold backdrop-blur-md"
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
+              <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+            </svg>
+            <span>הוספת מתכון</span>
+          </motion.button>
+        </div>
       </header>
 
-      <div ref={stageRef} className="relative flex min-h-0 flex-1 items-center justify-center">
+      <div ref={stageRef} className="relative z-10 flex min-h-0 flex-1 items-center justify-center">
         {error && (
           <p className="max-w-md rounded bg-black/40 px-4 py-3 text-center font-sans text-sm text-paper">
             לא הצלחנו לטעון את המתכונים: {error}
@@ -224,19 +284,30 @@ export default function BookApp() {
           </motion.div>
         )}
 
-        {loading && <p className="font-serif text-lg text-paper/80">מנגבים את האבק מהספר…</p>}
+        {loading && (
+          <p className="font-serif text-lg opacity-80" style={{ color: "var(--ui-ink)" }}>
+            מנגבים את האבק מהספר…
+          </p>
+        )}
       </div>
 
-      <footer className="relative flex items-center justify-center gap-4 px-4 pb-3 pt-2 font-sans text-paper/80 sm:pb-5">
-        <NavButton label="לעמוד הקודם" onClick={() => bookRef.current?.prev()} disabled={page === 0}>
-          <path d="M9 5l7 7-7 7" />
-        </NavButton>
-        <span className="min-w-[10rem] text-center text-sm tabular-nums">{folio}</span>
-        <NavButton label="לעמוד הבא" onClick={() => bookRef.current?.next()} disabled={page >= lastPage}>
-          <path d="M15 5l-7 7 7 7" />
-        </NavButton>
+      <footer className="relative z-20 flex items-center justify-center gap-4 px-4 pb-3 pt-2 font-sans sm:pb-5">
+        <div className="theme-glass flex items-center gap-3 rounded-full border px-3 py-1.5 shadow-md">
+          <NavButton label="לעמוד הקודם" onClick={() => bookRef.current?.prev()} disabled={page === 0}>
+            <path d="M9 5l7 7-7 7" />
+          </NavButton>
+          <span className="min-w-[9rem] text-center text-sm tabular-nums">{folio}</span>
+          <NavButton label="לעמוד הבא" onClick={() => bookRef.current?.next()} disabled={page >= lastPage}>
+            <path d="M15 5l-7 7 7 7" />
+          </NavButton>
+        </div>
         {backendLabel && (
-          <span className="absolute left-6 hidden text-xs text-paper/50 lg:block">{backendLabel}</span>
+          <span
+            className="absolute left-6 hidden text-xs opacity-60 lg:block"
+            style={{ color: "var(--ui-ink)" }}
+          >
+            {backendLabel}
+          </span>
         )}
       </footer>
 
@@ -250,7 +321,7 @@ export default function BookApp() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
-            className="fixed bottom-16 left-1/2 z-50 -translate-x-1/2 whitespace-nowrap rounded-full bg-ink/90 px-5 py-2.5 font-sans text-sm text-paper shadow-lg"
+            className="theme-glass fixed bottom-16 left-1/2 z-50 -translate-x-1/2 whitespace-nowrap rounded-full border px-5 py-2.5 font-sans text-sm shadow-lg"
           >
             {toast}
           </motion.div>
@@ -277,7 +348,7 @@ function NavButton({
       aria-label={label}
       onClick={onClick}
       disabled={disabled}
-      className="rounded-full border border-paper/25 p-2 text-paper/80 transition hover:border-paper/60 hover:bg-paper/10 hover:text-paper disabled:opacity-30"
+      className="rounded-full border border-current/25 p-1.5 opacity-85 transition hover:border-current/60 hover:bg-white/10 hover:opacity-100 disabled:opacity-30"
     >
       <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
         {children}
