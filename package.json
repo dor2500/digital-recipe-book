@@ -2,7 +2,7 @@
   "name": "digital-recipe-book",
   "version": "0.1.0",
   "private": true,
-  "description": "An open-source recipe book that looks and flips like a real one.",
+  "description": "ספר המתכונים הרשמי של טורפים את המטבח – ספר מתכונים דיגיטלי שמתדפדף כמו ספר אמיתי.",
   "license": "MIT",
   "scripts": {
     "dev": "next dev",

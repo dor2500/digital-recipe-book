@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { CATEGORIES, type Category } from "@/lib/types";
+import { CATEGORIES, CATEGORY_LABEL, type Category } from "@/lib/types";
 
 const TAB_COLOR: Record<Category, string> = {
   Breakfast: "bg-tab-breakfast",
@@ -20,16 +20,17 @@ interface Props {
 
 /**
  * Cloth index tabs glued to the fore-edge of the pages. On desktop they stick
- * out of the right-hand edge; in single-page (mobile) mode they sit on top.
+ * out of the left edge (the unread side of a Hebrew book); in single-page
+ * (mobile) mode they sit on top.
  */
 export function BookmarkTabs({ categoryPage, active, orientation, onSelect }: Props) {
   const side = orientation === "side";
   return (
     <nav
-      aria-label="Recipe sections"
+      aria-label="פרקי הספר"
       className={
         side
-          ? "absolute bottom-[8%] left-full top-[8%] z-0 flex flex-col gap-2"
+          ? "absolute bottom-[8%] right-full top-[8%] z-0 flex flex-col gap-2"
           : "absolute inset-x-[5%] bottom-full z-0 flex flex-row gap-1.5"
       }
     >
@@ -37,8 +38,9 @@ export function BookmarkTabs({ categoryPage, active, orientation, onSelect }: Pr
         const page = categoryPage[category];
         const isActive = active === category;
         const disabled = page === undefined;
-        const rest = side ? { x: isActive ? 6 : -10 } : { y: isActive ? -13 : -9 };
-        const hover = side ? { x: 10 } : { y: -15 };
+        const label = CATEGORY_LABEL[category];
+        const rest = side ? { x: isActive ? -8 : 6 } : { y: isActive ? -13 : -9 };
+        const hover = side ? { x: -10 } : { y: -15 };
         return (
           <motion.button
             key={category}
@@ -51,17 +53,17 @@ export function BookmarkTabs({ categoryPage, active, orientation, onSelect }: Pr
             whileTap={disabled ? undefined : { scale: 0.97 }}
             transition={{ type: "spring", stiffness: 380, damping: 26 }}
             aria-current={isActive ? "true" : undefined}
-            title={disabled ? `No ${category.toLowerCase()} recipes yet` : `Jump to ${category}`}
+            title={disabled ? `אין עדיין מתכונים ב${label}` : `מעבר ל${label}`}
             className={[
-              "bookmark-tab font-sans font-semibold uppercase text-white/95",
+              "bookmark-tab font-sans font-bold text-white/95",
               TAB_COLOR[category],
               side
-                ? "bookmark-tab--side min-h-0 max-h-[124px] w-9 flex-1 pl-2.5 text-[10.5px] tracking-[.16em] [writing-mode:vertical-rl]"
-                : "bookmark-tab--top h-9 min-w-0 max-w-[8rem] flex-1 truncate px-1.5 pb-2.5 text-[clamp(8px,2.4vw,10px)] tracking-[.12em]",
+                ? "bookmark-tab--side min-h-0 max-h-[124px] w-10 flex-1 pr-2 text-[13px] [writing-mode:vertical-rl]"
+                : "bookmark-tab--top h-9 min-w-0 max-w-[8rem] flex-1 truncate px-1.5 pb-2.5 text-[clamp(10px,3vw,12px)]",
               disabled ? "cursor-not-allowed opacity-40 saturate-50" : "cursor-pointer",
             ].join(" ")}
           >
-            {category}
+            {label}
           </motion.button>
         );
       })}

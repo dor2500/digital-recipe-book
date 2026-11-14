@@ -1,5 +1,6 @@
 import { forwardRef, type ReactNode } from "react";
 
+/** Which half of the open book the page sits on (physical, not reading order). */
 export type PageSide = "left" | "right" | "single";
 
 interface PaperProps {
@@ -7,7 +8,7 @@ interface PaperProps {
   /** "hard" pages (covers) flip stiffly like board, "soft" ones curl. */
   density?: "hard" | "soft";
   variant?: "paper" | "cover" | "endpaper";
-  /** Printed folio number. Hidden when undefined. */
+  /** Printed page number. Hidden when undefined. */
   folio?: number;
   children: ReactNode;
 }

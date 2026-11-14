@@ -6,12 +6,14 @@ import { CATEGORIES, type Category, type Recipe } from "@/lib/types";
  *
  *   0            front cover (hard, shown alone)
  *   1 … T        table of contents (T is always even)
- *   T+1, T+2     recipe #1  (left page, right page)
+ *   T+1, T+2     recipe #1  (first page, second page in reading order)
  *   …
  *   last         back cover (hard, shown alone)
  *
- * With `showCover`, the flip engine shows page 0 alone and then pairs pages
- * (1,2), (3,4)…, so every odd index is a left-hand page. Keeping T even
+ * Indexes here are in READING order. The Book component reverses them for the
+ * right-to-left (Hebrew) flip. With `showCover`, the engine shows page 0 alone
+ * and then pairs pages
+ * (1,2), (3,4)…, so every odd index opens a spread. Keeping T even
  * guarantees each recipe opens as a proper two-page spread.
  */
 
@@ -23,17 +25,17 @@ export type PageSpec =
   | { kind: "cover" }
   | { kind: "toc"; lines: TocLine[]; sheet: number; sheets: number }
   | { kind: "endpaper" }
-  | { kind: "recipe-left"; recipe: Recipe }
-  | { kind: "recipe-right"; recipe: Recipe }
+  | { kind: "recipe-first"; recipe: Recipe }
+  | { kind: "recipe-second"; recipe: Recipe }
   | { kind: "back-cover" };
 
 export interface BookLayout {
   pages: PageSpec[];
   /** Recipes in the order they appear in the book. */
   recipes: Recipe[];
-  /** recipe id → index of its left page */
+  /** recipe id → index of its first page */
   recipePage: Record<string, number>;
-  /** category → index of the first left page in that section (absent if empty) */
+  /** category → first page of that section (absent if empty) */
   categoryPage: Partial<Record<Category, number>>;
   /** index of the first ToC page */
   tocPage: number;
@@ -82,7 +84,7 @@ export function buildBookLayout(
   }
 
   const tocSheets = paginateToc(draft, linesPerPage);
-  // Pad to an even page count so recipes start on a left-hand page.
+  // Pad to an even page count so every recipe starts a new spread.
   const tocPageCount = tocSheets.length + (tocSheets.length % 2);
   const firstRecipePage = 1 + tocPageCount;
 
@@ -104,7 +106,7 @@ export function buildBookLayout(
   );
   if (tocSheets.length % 2) pages.push({ kind: "endpaper" });
   for (const recipe of recipes) {
-    pages.push({ kind: "recipe-left", recipe }, { kind: "recipe-right", recipe });
+    pages.push({ kind: "recipe-first", recipe }, { kind: "recipe-second", recipe });
   }
   pages.push({ kind: "back-cover" });
 
@@ -114,7 +116,7 @@ export function buildBookLayout(
 /** Which category's section a page belongs to (for highlighting the active tab). */
 export function categoryAtPage(layout: BookLayout, page: number): Category | null {
   const spec = layout.pages[page];
-  if (spec && (spec.kind === "recipe-left" || spec.kind === "recipe-right")) {
+  if (spec && (spec.kind === "recipe-first" || spec.kind === "recipe-second")) {
     return spec.recipe.category;
   }
   return null;

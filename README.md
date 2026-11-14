@@ -1,96 +1,108 @@
-# Kitchen Stories: a digital recipe book
+<div dir="rtl">
 
-An open-source cookbook that looks and turns like a real one. Browse recipes in
-a leather-bound book with realistic page curls, jump around with cloth index
-tabs, and add your own recipes on a lined recipe card.
+# ספר המתכונים הרשמי של טורפים את המטבח🌶️🔥
 
-- **Two-page spread** on desktop, **single page** on phones, with the flip animation in both
-- **Dynamic table of contents** that rebuilds itself and turns to a recipe when you click it
-- **Bookmark tabs** (Breakfast, Mains, Vegan, Desserts) that jump to each section
-- **Add Recipe card** with dynamic ingredient and step lists, plus photo by URL or upload
-- **Pluggable storage**: works offline out of the box (browser storage), or point it at Supabase
+ספר מתכונים דיגיטלי בקוד פתוח שנראה ומתדפדף כמו ספר אמיתי. מדפדפים בספר כרוך בעור עם דפים שמתעקלים באמת, קופצים בין הפרקים בעזרת לשוניות בד, ומוסיפים מתכונים משלכם על כרטיס מתכון מרופד שורות.
 
-Built with Next.js (App Router), Tailwind CSS, Framer Motion and
-[`react-pageflip`](https://github.com/Nodlik/react-pageflip).
+**לצפייה בספר:** https://dor2500.github.io/digital-recipe-book/
 
-## Getting started
+![הכריכה](docs/screenshots/cover.jpg)
+
+## מה יש בספר
+
+- **ספר בעברית שנפתח מימין לשמאל**, כמו ספר עברי אמיתי: הדפים מתהפכים משמאל לימין
+- **שני עמודים פתוחים במחשב, עמוד אחד בטלפון**, עם אנימציית הדפדוף בשניהם
+- **תוכן עניינים חי** שמתעדכן לבד כשמוסיפים מתכון, ובלחיצה על מתכון הספר מדפדף אליו
+- **לשוניות פרקים** (ארוחות בוקר, עיקריות, טבעוני, קינוחים) שקופצות לתחילת כל פרק
+- **הוספת מתכון** עם מצרכים ושלבים שאפשר להוסיף ולהסיר, וטיפ מהשף
+- **תמונה של המנה מהגלריה של המכשיר**, צילום ישיר מהמצלמה, או קישור לתמונה
+- **רשום מי העלה כל מתכון** ומתי
+- **רק מי שהעלה מתכון יכול לערוך או למחוק אותו**: הכפתורים מופיעים רק לו
+
+| מתכון פתוח | תוכן העניינים |
+| --- | --- |
+| ![מתכון פתוח](docs/screenshots/recipe-spread.jpg) | ![תוכן העניינים](docs/screenshots/contents.jpg) |
+
+| עריכה ומחיקה למי שהעלה | כרטיס מתכון חדש | בטלפון |
+| --- | --- | --- |
+| ![כפתורי עריכה ומחיקה](docs/screenshots/owner-controls.jpg) | ![כרטיס מתכון](docs/screenshots/recipe-form.png) | ![בטלפון](docs/screenshots/mobile.png) |
+
+## הרצה מקומית
+
+</div>
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open http://localhost:3000. With no configuration, the book shows the bundled
-sample recipes, and anything you add is saved in your browser.
+<div dir="rtl">
 
-## Project structure
+ופותחים את http://localhost:3000. בלי שום הגדרה, הספר מציג את מתכוני הדוגמה, ומה שמוסיפים נשמר בדפדפן שלכם.
+
+## איפה נשמרים המתכונים
+
+**בלי הגדרות (ברירת מחדל):** כל מתכון נשמר בדפדפן של מי שהוסיף אותו. כל דפדפן מקבל מזהה אקראי, וזה מה שמסמן מי העלה מה. זה עובד גם באתר ב-GitHub Pages, אבל כל מבקר רואה רק את המתכונים שהוא עצמו הוסיף.
+
+**כדי שכולם יראו את אותו ספר:** מחברים Supabase (חינמי):
+
+1. פותחים פרויקט ב-Supabase ומריצים את [`supabase/schema.sql`](supabase/schema.sql) ב-SQL Editor.
+2. מפעילים ב-Authentication ← Sign In / Providers את **Allow anonymous sign-ins**. כל מבקר מקבל משתמש אנונימי, וכללי האבטחה במסד הנתונים מאפשרים רק לו לערוך ולמחוק את המתכונים שלו.
+3. מעתיקים את `.env.example` ל-`.env.local` וממלאים `NEXT_PUBLIC_SUPABASE_URL` ו-`NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+4. מפעילים מחדש את `npm run dev`.
+
+## העלאה ל-GitHub Pages
+
+</div>
+
+```bash
+GITHUB_PAGES=true npx next build
+touch out/.nojekyll
+```
+
+<div dir="rtl">
+
+התיקייה `out/` היא האתר המוכן. מעלים את התוכן שלה לענף `gh-pages`. אם שם המאגר שונה מ-`digital-recipe-book`, מגדירים גם `PAGES_BASE_PATH=/<שם-המאגר>`.
+
+## מבנה הפרויקט
+
+</div>
 
 ```
 src/
-├─ app/
-│  ├─ layout.tsx          fonts (Playfair Display, Source Sans 3, Caveat) + wooden table
-│  ├─ page.tsx
-│  ├─ globals.css         paper, leather, wood, tabs and recipe-card styling
-│  └─ icon.svg
+├─ app/                     פונטים (Frank Ruhl Libre, Assistant, Amatic SC), שולחן העץ, עיצוב הנייר והעור
 ├─ components/
-│  ├─ BookApp.tsx         sizing, page state, controls, wiring
+│  ├─ BookApp.tsx           גודל הספר, מצב העמוד, כפתורים, הוספה/עריכה/מחיקה
 │  ├─ book/
-│  │  ├─ Book.tsx         the flipbook: page-flip config + page rendering
-│  │  ├─ Paper.tsx        one physical page (soft paper or hard cover)
-│  │  ├─ PageContents.tsx cover, contents, recipe left/right pages
-│  │  └─ BookmarkTabs.tsx category tabs (side on desktop, top on mobile)
+│  │  ├─ Book.tsx           הספר המתדפדף (react-pageflip), הפוך לכיוון ימין-לשמאל
+│  │  ├─ Paper.tsx          עמוד בודד (נייר רך או כריכה קשה)
+│  │  ├─ PageContents.tsx   כריכה, תוכן עניינים, עמודי מתכון
+│  │  └─ BookmarkTabs.tsx   לשוניות הפרקים
 │  └─ form/
-│     └─ AddRecipeModal.tsx  the "recipe card" form
-├─ data/mockRecipes.ts    sample recipes (also a data-shape reference)
-├─ hooks/                 useRecipes, useElementSize
+│     ├─ RecipeFormModal.tsx     כרטיס המתכון (הוספה ועריכה)
+│     └─ ConfirmDeleteDialog.tsx אישור מחיקה
+├─ data/mockRecipes.ts      מתכוני דוגמה
+├─ hooks/                   useRecipes, useElementSize
 └─ lib/
-   ├─ types.ts            Recipe / Ingredient / Category
-   ├─ bookLayout.ts       recipes → ordered pages, ToC, tab targets (pure)
-   └─ storage/            RecipeRepository interface + local and Supabase adapters
-supabase/schema.sql       table, row-level security and image bucket
+   ├─ types.ts              מבנה המתכון והפרקים
+   ├─ bookLayout.ts         מתכונים ← עמודים, תוכן עניינים ויעדי הלשוניות
+   └─ storage/              ממשק האחסון + אחסון בדפדפן ו-Supabase
+supabase/schema.sql         טבלה, הרשאות לפי מעלה המתכון, דלי תמונות
 ```
 
-## How the book is laid out
+<div dir="rtl">
 
-`lib/bookLayout.ts` turns the recipe list into pages:
+## הערות למפתחים
 
-| Page          | Content                                          |
-| ------------- | ------------------------------------------------ |
-| 0             | Front cover (hard, shown alone)                  |
-| 1 … T         | Table of contents (padded to an even count)      |
-| odd / even    | Each recipe: left page (photo, ingredients) + right page (method, chef's notes) |
-| last          | Back cover                                       |
+- **כיוון ימין-לשמאל:** ספריית הדפדוף יודעת לדפדף רק משמאל לימין, אז `Book.tsx` מעביר לה את העמודים בסדר הפוך ופותח אותה בסוף. מחוץ לרכיב הזה כל מספרי העמודים הם לפי סדר הקריאה.
+- **רענון הספר:** הספרייה קוראת את ההגדרות פעם אחת, ולכן `BookApp` טוען את הספר מחדש (דרך `key`) כשמשתנים הגודל, הכיוון, מספר העמודים או תוכן מתכון.
+- **כפתורים בתוך עמוד:** הספרייה מעבירה לחיצה רק כשהיעד הוא בדיוק `<button>`, ולכן לילדים של כפתורים בתוך עמודים יש `pointer-events: none`.
+- **מצב קפדני כבוי:** `reactStrictMode` כבוי, כי הטעינה הכפולה של React במצב פיתוח משאירה דף תקוע באמצע דפדוף.
 
-Every recipe starts on an odd (left-hand) page, so it always opens as a full
-spread. Recipes are grouped by category, so a tab simply points at the first
-recipe of its section.
+תמונות מתכוני הדוגמה מ-[Unsplash](https://unsplash.com).
 
-## Using Supabase
-
-1. Create a project and run [`supabase/schema.sql`](supabase/schema.sql) in the SQL editor.
-2. Copy `.env.example` to `.env.local` and fill in `NEXT_PUBLIC_SUPABASE_URL` and
-   `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-3. Restart `npm run dev`.
-
-The sample policies let anyone read and add recipes. Tighten the insert
-policies (for example `to authenticated`) before you open the site to the public.
-
-### Other backends
-
-Implement the `RecipeRepository` interface in `src/lib/storage/types.ts`
-(`list()` and `create()`), and return your implementation from
-`getRecipeRepository()` in `src/lib/storage/index.ts`. The UI doesn't need to change.
-
-## Notes for contributors
-
-- `react-pageflip` reads its settings once, so `BookApp` remounts the book
-  (via `key`) when the size, orientation or page count changes.
-- The flip engine only lets clicks through when the event target *is* a
-  `<button>` or `<a>`. Buttons inside pages give their children
-  `pointer-events: none` (see the contents links).
-- `reactStrictMode` is off because the engine does not survive React's
-  dev-only double mount.
-
-## License
+## רישיון
 
 MIT
+
+</div>

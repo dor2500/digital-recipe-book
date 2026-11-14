@@ -8,12 +8,18 @@ import type { NewRecipe, Recipe } from "@/lib/types";
  * ./index.ts. Nothing in the UI needs to change.
  */
 export interface RecipeRepository {
-  /** Human-readable name shown in the footer ("Saved in this browser", ...). */
+  /** Shown in the footer ("נשמר בדפדפן הזה", ...). */
   readonly label: string;
+  /** Id of the current visitor. A recipe is theirs when `ownerId` matches. */
+  currentUserId(): Promise<string>;
   list(): Promise<Recipe[]>;
   /**
    * Persist a new recipe. When `imageFile` is given, the backend uploads it
    * and stores the resulting URL in `imageUrl`.
    */
   create(recipe: NewRecipe, imageFile?: File | null): Promise<Recipe>;
+  /** Replace a recipe's content. Only its owner may do this. */
+  update(id: string, recipe: NewRecipe, imageFile?: File | null): Promise<Recipe>;
+  /** Delete a recipe. Only its owner may do this. */
+  remove(id: string): Promise<void>;
 }

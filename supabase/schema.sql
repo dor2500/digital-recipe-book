@@ -1,5 +1,9 @@
 -- Run in the Supabase SQL editor, then set NEXT_PUBLIC_SUPABASE_URL and
 -- NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local.
+--
+-- Also turn on: Authentication → Sign In / Providers → "Allow anonymous sign-ins".
+-- Every visitor gets an anonymous user id. It marks who uploaded each recipe,
+-- and only that user can edit or delete it.
 
 create table if not exists public.recipes (
   id           uuid primary key default gen_random_uuid(),
@@ -11,10 +15,12 @@ create table if not exists public.recipes (
   servings     integer not null default 1 check (servings > 0),
   image_url    text,
   description  text,
-  ingredients  jsonb not null default '[]'::jsonb,  -- [{ "quantity": "2 cups", "name": "flour" }]
-  steps        jsonb not null default '[]'::jsonb,  -- ["Step one", "Step two"]
+  ingredients  jsonb not null default '[]'::jsonb,
+  steps        jsonb not null default '[]'::jsonb,
   chefs_notes  text,
-  created_at   timestamptz not null default now()
+  owner_id     uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz
 );
 
 alter table public.recipes enable row level security;
@@ -23,12 +29,18 @@ alter table public.recipes enable row level security;
 create policy "recipes are public" on public.recipes
   for select using (true);
 
--- Anyone can add a page. Tighten this (e.g. `to authenticated`) before
--- opening the site to the public internet.
-create policy "anyone can add a recipe" on public.recipes
-  for insert with check (true);
+-- Signed-in visitors (anonymous users count) add recipes as themselves.
+create policy "add your own recipe" on public.recipes
+  for insert to authenticated with check (owner_id = auth.uid());
 
--- Public bucket for recipe photos.
+-- Only the uploader can change or delete a recipe.
+create policy "edit your own recipe" on public.recipes
+  for update to authenticated using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+
+create policy "delete your own recipe" on public.recipes
+  for delete to authenticated using (owner_id = auth.uid());
+
+-- Public bucket for recipe photos. Each user uploads into a folder named by their id.
 insert into storage.buckets (id, name, public)
 values ('recipe-images', 'recipe-images', true)
 on conflict (id) do nothing;
@@ -36,5 +48,6 @@ on conflict (id) do nothing;
 create policy "recipe images are public" on storage.objects
   for select using (bucket_id = 'recipe-images');
 
-create policy "anyone can upload a recipe image" on storage.objects
-  for insert with check (bucket_id = 'recipe-images');
+create policy "upload into your own folder" on storage.objects
+  for insert to authenticated
+  with check (bucket_id = 'recipe-images' and (storage.foldername(name))[1] = auth.uid()::text);

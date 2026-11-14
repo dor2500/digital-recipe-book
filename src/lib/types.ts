@@ -3,19 +3,29 @@
  * reads and writes exactly these shapes.
  */
 
+/** Internal category keys (stable, also stored in the database). */
 export const CATEGORIES = ["Breakfast", "Mains", "Vegan", "Desserts"] as const;
 export type Category = (typeof CATEGORIES)[number];
 
+/** What readers see. */
+export const CATEGORY_LABEL: Record<Category, string> = {
+  Breakfast: "ארוחות בוקר",
+  Mains: "עיקריות",
+  Vegan: "טבעוני",
+  Desserts: "קינוחים",
+};
+
 export interface Ingredient {
-  /** "2 cups", "1 tbsp", "a pinch" — free text so cooks can write naturally. */
+  /** "2 כוסות", "כף", "קורט" — free text so cooks can write naturally. */
   quantity: string;
-  /** "all-purpose flour" */
+  /** "קמח לבן" */
   name: string;
 }
 
 export interface Recipe {
   id: string;
   title: string;
+  /** The name of whoever uploaded the recipe, shown as "הועלה על ידי". */
   author: string;
   category: Category;
   /** Minutes. */
@@ -25,7 +35,7 @@ export interface Recipe {
   servings: number;
   /** Remote URL or a data: URL for locally stored uploads. Optional. */
   imageUrl?: string;
-  /** One-line teaser shown under the title. */
+  /** One-line teaser shown on the method page. */
   description?: string;
   ingredients: Ingredient[];
   /** Ordered cooking steps. */
@@ -33,7 +43,14 @@ export interface Recipe {
   chefsNotes?: string;
   /** ISO timestamp. */
   createdAt: string;
+  /** ISO timestamp of the last edit, if any. */
+  updatedAt?: string;
+  /**
+   * Opaque id of the uploader (a per-browser id locally, the Supabase user id
+   * remotely). Only the uploader may edit or delete. Sample recipes have none.
+   */
+  ownerId?: string;
 }
 
-/** What the "Add Recipe" form submits. The backend assigns id/createdAt. */
-export type NewRecipe = Omit<Recipe, "id" | "createdAt">;
+/** What the recipe form submits. The backend assigns the rest. */
+export type NewRecipe = Omit<Recipe, "id" | "createdAt" | "updatedAt" | "ownerId">;

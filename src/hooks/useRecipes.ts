@@ -9,6 +9,7 @@ export function useRecipes() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [backendLabel, setBackendLabel] = useState("");
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -16,7 +17,13 @@ export function useRecipes() {
       .then(async (repo) => {
         setBackendLabel(repo.label);
         const list = await repo.list();
-        if (alive) setRecipes(list);
+        if (!alive) return;
+        setRecipes(list);
+        // Who is reading? Decides whether edit/delete buttons appear.
+        repo.currentUserId().then(
+          (id) => alive && setUserId(id),
+          () => {},
+        );
       })
       .catch((e: unknown) => alive && setError(e instanceof Error ? e.message : String(e)))
       .finally(() => alive && setLoading(false));
@@ -30,13 +37,10 @@ export function useRecipes() {
    * before the book re-renders, so the caller can queue up a page turn.
    */
   const addRecipe = useCallback(
-    async (
-      input: NewRecipe,
-      imageFile?: File | null,
-      beforeInsert?: (created: Recipe) => void,
-    ) => {
+    async (input: NewRecipe, imageFile?: File | null, beforeInsert?: (created: Recipe) => void) => {
       const repo = await getRecipeRepository();
       const created = await repo.create(input, imageFile);
+      if (created.ownerId) setUserId(created.ownerId);
       beforeInsert?.(created);
       setRecipes((prev) => [...prev, created]);
       return created;
@@ -44,5 +48,21 @@ export function useRecipes() {
     [],
   );
 
-  return { recipes, loading, error, backendLabel, addRecipe };
+  const updateRecipe = useCallback(
+    async (id: string, input: NewRecipe, imageFile?: File | null) => {
+      const repo = await getRecipeRepository();
+      const updated = await repo.update(id, input, imageFile);
+      setRecipes((prev) => prev.map((r) => (r.id === id ? updated : r)));
+      return updated;
+    },
+    [],
+  );
+
+  const deleteRecipe = useCallback(async (id: string) => {
+    const repo = await getRecipeRepository();
+    await repo.remove(id);
+    setRecipes((prev) => prev.filter((r) => r.id !== id));
+  }, []);
+
+  return { recipes, loading, error, backendLabel, userId, addRecipe, updateRecipe, deleteRecipe };
 }
