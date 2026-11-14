@@ -72,7 +72,7 @@ export function FrontCover({ count }: { count: number }) {
         </p>
         <Ornament className="!w-32 !text-gilt/70" />
         <p className="font-serif text-[clamp(12px,3.2cqw,18px)] text-gilt/85">
-          {count} מתכונים חמים, ישר מהמטבח
+          {count === 1 ? "מתכון חם אחד" : `${count} מתכונים חמים`}, ישר מהמטבח
         </p>
         <p className="mt-[6%] font-sans text-[clamp(10px,2.4cqw,13px)] text-gilt/60">
           פתחו את הספר &larr;

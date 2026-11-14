@@ -39,6 +39,16 @@ const fromRow = (r: RecipeRow): Recipe => ({
   updatedAt: r.updated_at ?? undefined,
 });
 
+/** Turn database errors into something a cook can act on. */
+function friendly(error: { code?: string; message: string }): Error {
+  if (error.code === "23514" && /category/.test(error.message)) {
+    return new Error(
+      "הפרק הזה עוד לא מוגדר במסד הנתונים. מנהל האתר צריך להריץ את supabase/add-categories.sql.",
+    );
+  }
+  return new Error(error.message);
+}
+
 const toRow = (r: NewRecipe, imageUrl: string | undefined) => ({
   title: r.title,
   author: r.author,
@@ -102,7 +112,7 @@ export function createSupabaseRepository(
         .from("recipes")
         .select("*")
         .order("created_at", { ascending: true });
-      if (error) throw new Error(error.message);
+      if (error) throw friendly(error);
       return (data as RecipeRow[]).map(fromRow);
     },
 
@@ -114,7 +124,7 @@ export function createSupabaseRepository(
         .insert(toRow(input, imageUrl))
         .select()
         .single();
-      if (error) throw new Error(error.message);
+      if (error) throw friendly(error);
       return fromRow(data as RecipeRow);
     },
 
@@ -127,7 +137,7 @@ export function createSupabaseRepository(
         .eq("id", id)
         .select()
         .maybeSingle();
-      if (error) throw new Error(error.message);
+      if (error) throw friendly(error);
       // Row-level security silently matches zero rows for someone else's recipe.
       if (!data) throw new Error("רק מי שהעלה את המתכון יכול לשנות אותו.");
       return fromRow(data as RecipeRow);
@@ -136,7 +146,7 @@ export function createSupabaseRepository(
     async remove(id) {
       await ensureUser();
       const { data, error } = await db.from("recipes").delete().eq("id", id).select("id");
-      if (error) throw new Error(error.message);
+      if (error) throw friendly(error);
       if (!data?.length) throw new Error("רק מי שהעלה את המתכון יכול למחוק אותו.");
     },
   };

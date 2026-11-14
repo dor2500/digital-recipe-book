@@ -4,13 +4,25 @@
  */
 
 /** Internal category keys (stable, also stored in the database). */
-export const CATEGORIES = ["Breakfast", "Mains", "Vegan", "Desserts"] as const;
+/** Book order: sections appear in this order, each with its own tab. */
+export const CATEGORIES = [
+  "Breakfast",
+  "Mains",
+  "Sides",
+  "Breads",
+  "Baking",
+  "Vegan",
+  "Desserts",
+] as const;
 export type Category = (typeof CATEGORIES)[number];
 
 /** What readers see. */
 export const CATEGORY_LABEL: Record<Category, string> = {
   Breakfast: "ארוחות בוקר",
   Mains: "עיקריות",
+  Sides: "תוספות",
+  Breads: "לחמים",
+  Baking: "מאפים",
   Vegan: "טבעוני",
   Desserts: "קינוחים",
 };

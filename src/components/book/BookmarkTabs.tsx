@@ -1,11 +1,15 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useEffect, useRef } from "react";
 import { CATEGORIES, CATEGORY_LABEL, type Category } from "@/lib/types";
 
 const TAB_COLOR: Record<Category, string> = {
   Breakfast: "bg-tab-breakfast",
   Mains: "bg-tab-mains",
+  Sides: "bg-tab-sides",
+  Breads: "bg-tab-breads",
+  Baking: "bg-tab-baking",
   Vegan: "bg-tab-vegan",
   Desserts: "bg-tab-desserts",
 };
@@ -25,13 +29,26 @@ interface Props {
  */
 export function BookmarkTabs({ categoryPage, active, orientation, onSelect }: Props) {
   const side = orientation === "side";
+  const navRef = useRef<HTMLElement>(null);
+
+  // On phones the tab row scrolls sideways: keep the current section's tab in view.
+  useEffect(() => {
+    if (side || !active) return;
+    navRef.current
+      ?.querySelector<HTMLElement>('[aria-current="true"]')
+      ?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+  }, [active, side]);
+
   return (
     <nav
+      ref={navRef}
       aria-label="פרקי הספר"
       className={
         side
-          ? "absolute bottom-[8%] right-full top-[8%] z-0 flex flex-col gap-2"
-          : "absolute inset-x-[5%] bottom-full z-0 flex flex-row gap-1.5"
+          ? "absolute bottom-[5%] right-full top-[5%] z-0 flex flex-col gap-1.5"
+          : // Seven tabs do not fit across a phone page: let the row scroll sideways.
+          // pt-4 leaves room for the tabs' lift so the scroller does not clip it.
+          "no-scrollbar absolute inset-x-[3%] bottom-full z-0 flex flex-row gap-1.5 overflow-x-auto pt-4"
       }
     >
       {CATEGORIES.map((category) => {
@@ -58,8 +75,8 @@ export function BookmarkTabs({ categoryPage, active, orientation, onSelect }: Pr
               "bookmark-tab font-sans font-bold text-white/95",
               TAB_COLOR[category],
               side
-                ? "bookmark-tab--side min-h-0 max-h-[124px] w-10 flex-1 pr-2 text-[13px] [writing-mode:vertical-rl]"
-                : "bookmark-tab--top h-9 min-w-0 max-w-[8rem] flex-1 truncate px-1.5 pb-2.5 text-[clamp(10px,3vw,12px)]",
+                ? "bookmark-tab--side min-h-0 max-h-[124px] w-10 flex-1 pr-2 text-[clamp(10px,1.6vh,13px)] [writing-mode:vertical-rl]"
+                : "bookmark-tab--top h-9 shrink-0 whitespace-nowrap px-3 pb-2.5 text-xs",
               disabled ? "cursor-not-allowed opacity-40 saturate-50" : "cursor-pointer",
             ].join(" ")}
           >

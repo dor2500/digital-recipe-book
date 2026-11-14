@@ -9,7 +9,7 @@ create table if not exists public.recipes (
   id           uuid primary key default gen_random_uuid(),
   title        text not null check (char_length(title) between 1 and 120),
   author       text not null check (char_length(author) between 1 and 80),
-  category     text not null check (category in ('Breakfast', 'Mains', 'Vegan', 'Desserts')),
+  category     text not null check (category in ('Breakfast', 'Mains', 'Sides', 'Breads', 'Baking', 'Vegan', 'Desserts')),
   prep_time    integer not null default 0 check (prep_time >= 0),
   cook_time    integer not null default 0 check (cook_time >= 0),
   servings     integer not null default 1 check (servings > 0),
