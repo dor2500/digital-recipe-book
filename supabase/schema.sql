@@ -18,7 +18,8 @@ create table if not exists public.recipes (
   ingredients  jsonb not null default '[]'::jsonb,
   steps        jsonb not null default '[]'::jsonb,
   chefs_notes  text,
-  owner_id     uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  -- null = a sample recipe loaded by supabase/seed.sql (nobody can edit it)
+  owner_id     uuid default auth.uid() references auth.users (id) on delete cascade,
   created_at   timestamptz not null default now(),
   updated_at   timestamptz
 );
