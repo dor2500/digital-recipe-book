@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { NewRecipe, Recipe } from "@/lib/types";
-import type { RecipeRepository } from "./types";
+import type { NewRecipe, PhotoInput, Recipe } from "@/lib/types";
+import { resolvePhotos, type RecipeRepository } from "./types";
 
 /** Row shape of the `recipes` table (snake_case, see supabase/schema.sql). */
 interface RecipeRow {
@@ -11,7 +11,10 @@ interface RecipeRow {
   prep_time: number;
   cook_time: number;
   servings: number;
+  /** First photo, kept for older readers of the table. */
   image_url: string | null;
+  /** All photos in order. Missing until supabase/add-images.sql has run. */
+  images?: string[] | null;
   description: string | null;
   ingredients: Recipe["ingredients"];
   steps: string[];
@@ -29,7 +32,7 @@ const fromRow = (r: RecipeRow): Recipe => ({
   prepTime: r.prep_time,
   cookTime: r.cook_time,
   servings: r.servings,
-  imageUrl: r.image_url ?? undefined,
+  images: r.images?.length ? r.images : r.image_url ? [r.image_url] : [],
   description: r.description ?? undefined,
   ingredients: r.ingredients,
   steps: r.steps,
@@ -49,14 +52,18 @@ function friendly(error: { code?: string; message: string }): Error {
   return new Error(error.message);
 }
 
-const toRow = (r: NewRecipe, imageUrl: string | undefined) => ({
+/** PostgREST's answer when the `images` column has not been added yet. */
+const missingImagesColumn = (error: { code?: string; message: string }) =>
+  error.code === "PGRST204" && /images/.test(error.message);
+
+const toRow = (r: NewRecipe, images: string[]) => ({
   title: r.title,
   author: r.author,
   category: r.category,
   prep_time: r.prepTime,
   cook_time: r.cookTime,
   servings: r.servings,
-  image_url: imageUrl ?? null,
+  image_url: images[0] ?? null,
   description: r.description ?? null,
   ingredients: r.ingredients,
   steps: r.steps,
@@ -102,6 +109,26 @@ export function createSupabaseRepository(
     return db.storage.from(bucket).getPublicUrl(path).data.publicUrl;
   }
 
+  type Saved = { data: unknown; error: { code?: string; message: string } | null };
+
+  /**
+   * Writes a row with all its photos. A project set up before multi-photo
+   * support has no `images` column yet: then a recipe with one photo is still
+   * saved (in image_url), and more than one asks the owner to run the migration.
+   */
+  function saveRow(images: string[], write: (row: Record<string, unknown>) => PromiseLike<Saved>) {
+    return async (row: Record<string, unknown>): Promise<Saved> => {
+      const result = await write({ ...row, images });
+      if (!result.error || !missingImagesColumn(result.error)) return result;
+      if (images.length > 1) {
+        throw new Error(
+          "כדי לשמור כמה תמונות, מנהל האתר צריך להריץ את supabase/add-images.sql. בינתיים אפשר לשמור תמונה אחת.",
+        );
+      }
+      return write(row);
+    };
+  }
+
   return {
     label: "המתכונים משותפים דרך Supabase",
 
@@ -116,27 +143,22 @@ export function createSupabaseRepository(
       return (data as RecipeRow[]).map(fromRow);
     },
 
-    async create(input, imageFile) {
+    async create(input: NewRecipe, photos: PhotoInput[]) {
       await ensureUser();
-      const imageUrl = imageFile ? await uploadImage(imageFile) : input.imageUrl;
-      const { data, error } = await db
-        .from("recipes")
-        .insert(toRow(input, imageUrl))
-        .select()
-        .single();
+      const images = await resolvePhotos(photos, uploadImage);
+      const { data, error } = await saveRow(images, (row) =>
+        db.from("recipes").insert(row).select().single(),
+      )(toRow(input, images));
       if (error) throw friendly(error);
       return fromRow(data as RecipeRow);
     },
 
-    async update(id, input, imageFile) {
+    async update(id: string, input: NewRecipe, photos: PhotoInput[]) {
       await ensureUser();
-      const imageUrl = imageFile ? await uploadImage(imageFile) : input.imageUrl;
-      const { data, error } = await db
-        .from("recipes")
-        .update({ ...toRow(input, imageUrl), updated_at: new Date().toISOString() })
-        .eq("id", id)
-        .select()
-        .maybeSingle();
+      const images = await resolvePhotos(photos, uploadImage);
+      const { data, error } = await saveRow(images, (row) =>
+        db.from("recipes").update(row).eq("id", id).select().maybeSingle(),
+      )({ ...toRow(input, images), updated_at: new Date().toISOString() });
       if (error) throw friendly(error);
       // Row-level security silently matches zero rows for someone else's recipe.
       if (!data) throw new Error("רק מי שהעלה את המתכון יכול לשנות אותו.");

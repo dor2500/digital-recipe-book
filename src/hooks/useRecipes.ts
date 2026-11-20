@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { getRecipeRepository } from "@/lib/storage";
-import type { NewRecipe, Recipe } from "@/lib/types";
+import type { NewRecipe, PhotoInput, Recipe } from "@/lib/types";
 
 export function useRecipes() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -37,9 +37,9 @@ export function useRecipes() {
    * before the book re-renders, so the caller can queue up a page turn.
    */
   const addRecipe = useCallback(
-    async (input: NewRecipe, imageFile?: File | null, beforeInsert?: (created: Recipe) => void) => {
+    async (input: NewRecipe, photos: PhotoInput[], beforeInsert?: (created: Recipe) => void) => {
       const repo = await getRecipeRepository();
-      const created = await repo.create(input, imageFile);
+      const created = await repo.create(input, photos);
       if (created.ownerId) setUserId(created.ownerId);
       beforeInsert?.(created);
       setRecipes((prev) => [...prev, created]);
@@ -49,9 +49,9 @@ export function useRecipes() {
   );
 
   const updateRecipe = useCallback(
-    async (id: string, input: NewRecipe, imageFile?: File | null) => {
+    async (id: string, input: NewRecipe, photos: PhotoInput[]) => {
       const repo = await getRecipeRepository();
-      const updated = await repo.update(id, input, imageFile);
+      const updated = await repo.update(id, input, photos);
       setRecipes((prev) => prev.map((r) => (r.id === id ? updated : r)));
       return updated;
     },

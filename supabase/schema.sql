@@ -13,7 +13,8 @@ create table if not exists public.recipes (
   prep_time    integer not null default 0 check (prep_time >= 0),
   cook_time    integer not null default 0 check (cook_time >= 0),
   servings     integer not null default 1 check (servings > 0),
-  image_url    text,
+  image_url    text,  -- first photo (kept for older readers)
+  images       jsonb not null default '[]'::jsonb,  -- all photos, in order
   description  text,
   ingredients  jsonb not null default '[]'::jsonb,
   steps        jsonb not null default '[]'::jsonb,

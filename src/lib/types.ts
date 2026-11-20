@@ -76,8 +76,11 @@ export interface Recipe {
   /** Minutes. */
   cookTime: number;
   servings: number;
-  /** Remote URL or a data: URL for locally stored uploads. Optional. */
-  imageUrl?: string;
+  /**
+   * Photos of the dish, in order; the first one is the cover shown on the page.
+   * Remote URLs, or data: URLs for photos stored in the browser. May be empty.
+   */
+  images: string[];
   /** One-line teaser shown on the method page. */
   description?: string;
   ingredients: Ingredient[];
@@ -95,5 +98,15 @@ export interface Recipe {
   ownerId?: string;
 }
 
-/** What the recipe form submits. The backend assigns the rest. */
-export type NewRecipe = Omit<Recipe, "id" | "createdAt" | "updatedAt" | "ownerId">;
+/** Most photos one recipe can have. */
+export const MAX_PHOTOS = 10;
+
+/** What the recipe form submits. Photos travel separately (see PhotoInput). */
+export type NewRecipe = Omit<Recipe, "id" | "createdAt" | "updatedAt" | "ownerId" | "images">;
+
+/**
+ * One photo as the form hands it to a backend, in display order: either a
+ * photo that already has a URL (kept from before, or a pasted link) or a new
+ * file from the gallery or camera that the backend must upload.
+ */
+export type PhotoInput = { url: string } | { file: File };

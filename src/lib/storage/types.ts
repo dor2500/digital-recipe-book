@@ -1,4 +1,4 @@
-import type { NewRecipe, Recipe } from "@/lib/types";
+import type { NewRecipe, PhotoInput, Recipe } from "@/lib/types";
 
 /**
  * The one seam between the UI and a backend.
@@ -14,12 +14,20 @@ export interface RecipeRepository {
   currentUserId(): Promise<string>;
   list(): Promise<Recipe[]>;
   /**
-   * Persist a new recipe. When `imageFile` is given, the backend uploads it
-   * and stores the resulting URL in `imageUrl`.
+   * Persist a new recipe. `photos` are in display order: files are uploaded
+   * and become URLs in `images`; URLs are kept as they are.
    */
-  create(recipe: NewRecipe, imageFile?: File | null): Promise<Recipe>;
-  /** Replace a recipe's content. Only its owner may do this. */
-  update(id: string, recipe: NewRecipe, imageFile?: File | null): Promise<Recipe>;
+  create(recipe: NewRecipe, photos: PhotoInput[]): Promise<Recipe>;
+  /** Replace a recipe's content and photos. Only its owner may do this. */
+  update(id: string, recipe: NewRecipe, photos: PhotoInput[]): Promise<Recipe>;
   /** Delete a recipe. Only its owner may do this. */
   remove(id: string): Promise<void>;
+}
+
+/** Turn the form's photos into URLs, uploading new files in parallel but keeping their order. */
+export function resolvePhotos(
+  photos: PhotoInput[],
+  upload: (file: File) => Promise<string>,
+): Promise<string[]> {
+  return Promise.all(photos.map((p) => ("file" in p ? upload(p.file) : Promise.resolve(p.url))));
 }

@@ -156,9 +156,17 @@ export function TocPage({
 
 /* ----------------------------------------------------------------- recipes */
 
-function RecipeImage({ recipe }: { recipe: Recipe }) {
-  const [failed, setFailed] = useState(false);
-  if (!recipe.imageUrl || failed) {
+/**
+ * The dish's photos on the page: the current one fills the frame, arrows and
+ * dots switch between them, and a tap opens the full-screen viewer.
+ */
+function RecipePhotos({ recipe, onView }: { recipe: Recipe; onView: PageActions["onViewPhotos"] }) {
+  const [failed, setFailed] = useState<Record<string, boolean>>({});
+  const images = recipe.images.filter((url) => !failed[url]);
+  const [index, setIndex] = useState(0);
+  const current = Math.min(index, Math.max(0, images.length - 1));
+
+  if (!images.length) {
     return (
       <div className="photo-frame flex aspect-[16/10] max-h-[34cqh] w-full shrink-0 items-center justify-center bg-paper-dark">
         <svg viewBox="0 0 64 64" className="h-1/3 text-ink-faint/60" aria-hidden>
@@ -169,23 +177,58 @@ function RecipeImage({ recipe }: { recipe: Recipe }) {
       </div>
     );
   }
+
+  const many = images.length > 1;
+  const go = (by: number) => setIndex((current + by + images.length) % images.length);
+
   return (
-    <div className="photo-frame aspect-[16/10] max-h-[34cqh] w-full shrink-0 overflow-hidden">
-      <img
-        src={recipe.imageUrl}
-        alt={recipe.title}
-        loading="lazy"
-        draggable={false}
-        onError={() => setFailed(true)}
-        className="h-full w-full object-cover"
-      />
+    <div className="photo-frame relative aspect-[16/10] max-h-[34cqh] w-full shrink-0 overflow-hidden">
+      <PageButton
+        label={many ? `הגדלת תמונה ${current + 1} מתוך ${images.length}` : "הגדלת התמונה"}
+        onClick={() => onView(images, current, recipe.title)}
+        className="block h-full w-full cursor-zoom-in"
+      >
+        <img
+          key={images[current]}
+          src={images[current]}
+          alt={recipe.title}
+          loading="lazy"
+          draggable={false}
+          onError={() => setFailed((f) => ({ ...f, [images[current]]: true }))}
+          className="h-full w-full object-cover"
+        />
+      </PageButton>
+      {many && (
+        <>
+          {/* Right-to-left: the next photo is to the left. */}
+          <PageButton label="התמונה הקודמת" onClick={() => go(-1)} className="photo-nav absolute right-1.5 top-1/2 -translate-y-1/2">
+            ›
+          </PageButton>
+          <PageButton label="התמונה הבאה" onClick={() => go(1)} className="photo-nav absolute left-1.5 top-1/2 -translate-y-1/2">
+            ‹
+          </PageButton>
+          <div className="pointer-events-none absolute inset-x-0 bottom-1.5 flex justify-center gap-1" aria-hidden>
+            {images.map((url, i) => (
+              <span
+                key={url}
+                className={`h-1.5 rounded-full bg-white shadow transition-all ${i === current ? "w-4" : "w-1.5 opacity-60"}`}
+              />
+            ))}
+          </div>
+          <span className="pointer-events-none absolute end-1.5 top-1.5 rounded-full bg-black/55 px-2 py-0.5 font-sans text-[11px] font-bold text-white">
+            📷 {current + 1}/{images.length}
+          </span>
+        </>
+      )}
     </div>
   );
 }
 
-export interface OwnerActions {
+export interface PageActions {
   onEdit: (recipe: Recipe) => void;
   onDelete: (recipe: Recipe) => void;
+  /** Open the full-screen photo viewer. */
+  onViewPhotos: (images: string[], index: number, title: string) => void;
 }
 
 /** First page of a recipe (in reading order): title, uploader, photo, ingredients. */
@@ -196,7 +239,7 @@ export function RecipeFirst({
 }: {
   recipe: Recipe;
   isOwner: boolean;
-  actions: OwnerActions;
+  actions: PageActions;
 }) {
   return (
     <article className="flex h-full flex-col">
@@ -247,7 +290,7 @@ export function RecipeFirst({
         ))}
       </dl>
 
-      <RecipeImage recipe={recipe} />
+      <RecipePhotos recipe={recipe} onView={actions.onViewPhotos} />
 
       <h3 className="mb-[1.5%] mt-[4%] font-serif text-[clamp(15px,3.8cqw,22px)] font-bold text-ink">
         מצרכים

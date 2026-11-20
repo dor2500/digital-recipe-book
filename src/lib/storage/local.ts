@@ -1,6 +1,6 @@
 import { mockRecipes } from "@/data/mockRecipes";
-import type { NewRecipe, Recipe } from "@/lib/types";
-import type { RecipeRepository } from "./types";
+import type { NewRecipe, PhotoInput, Recipe } from "@/lib/types";
+import { resolvePhotos, type RecipeRepository } from "./types";
 
 const RECIPES_KEY = "recipe-book:user-recipes:v1";
 const OWNER_KEY = "recipe-book:owner-id";
@@ -8,7 +8,12 @@ const OWNER_KEY = "recipe-book:owner-id";
 function readUserRecipes(): Recipe[] {
   try {
     const raw = window.localStorage.getItem(RECIPES_KEY);
-    return raw ? (JSON.parse(raw) as Recipe[]) : [];
+    const list = raw ? (JSON.parse(raw) as (Recipe & { imageUrl?: string })[]) : [];
+    // Recipes saved before multi-photo support had a single `imageUrl`.
+    return list.map(({ imageUrl, ...r }) => ({
+      ...r,
+      images: r.images ?? (imageUrl ? [imageUrl] : []),
+    }));
   } catch {
     return [];
   }
@@ -18,7 +23,7 @@ function writeUserRecipes(list: Recipe[]) {
   try {
     window.localStorage.setItem(RECIPES_KEY, JSON.stringify(list));
   } catch {
-    throw new Error("האחסון בדפדפן מלא. נסו תמונה קטנה יותר, או הדביקו קישור לתמונה.");
+    throw new Error("האחסון בדפדפן מלא. נסו פחות תמונות, או הדביקו קישורים לתמונות.");
   }
 }
 
@@ -81,11 +86,11 @@ export const localRepository: RecipeRepository = {
     return [...mockRecipes, ...readUserRecipes()];
   },
 
-  async create(input: NewRecipe, imageFile?: File | null) {
-    const imageUrl = imageFile ? await fileToCompressedDataUrl(imageFile) : input.imageUrl;
+  async create(input: NewRecipe, photos: PhotoInput[]) {
+    const images = await resolvePhotos(photos, (f) => fileToCompressedDataUrl(f));
     const recipe: Recipe = {
       ...input,
-      imageUrl,
+      images,
       id: crypto.randomUUID(),
       createdAt: new Date().toISOString(),
       ownerId: ownerId(),
@@ -94,13 +99,13 @@ export const localRepository: RecipeRepository = {
     return recipe;
   },
 
-  async update(id: string, input: NewRecipe, imageFile?: File | null) {
+  async update(id: string, input: NewRecipe, photos: PhotoInput[]) {
     const { list, index } = findOwned(id);
-    const imageUrl = imageFile ? await fileToCompressedDataUrl(imageFile) : input.imageUrl;
+    const images = await resolvePhotos(photos, (f) => fileToCompressedDataUrl(f));
     const updated: Recipe = {
       ...list[index],
       ...input,
-      imageUrl,
+      images,
       updatedAt: new Date().toISOString(),
     };
     list[index] = updated;

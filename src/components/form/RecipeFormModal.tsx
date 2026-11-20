@@ -2,19 +2,28 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { CATEGORIES, CATEGORY_LABEL, type Category, type NewRecipe, type Recipe } from "@/lib/types";
+import {
+  CATEGORIES,
+  CATEGORY_LABEL,
+  MAX_PHOTOS,
+  type Category,
+  type NewRecipe,
+  type PhotoInput,
+  type Recipe,
+} from "@/lib/types";
 
 interface Props {
   open: boolean;
   /** When set, the form edits this recipe instead of adding a new one. */
   recipe?: Recipe | null;
   onClose: () => void;
-  onSubmit: (recipe: NewRecipe, imageFile: File | null) => Promise<void>;
+  onSubmit: (recipe: NewRecipe, photos: PhotoInput[]) => Promise<void>;
 }
 
 type Row = { key: string; quantity: string; name: string };
 type Step = { key: string; text: string };
-type ImageSource = "gallery" | "camera" | "link";
+/** A photo on the card: a saved/pasted URL, or a new file shown through an object URL. */
+type Photo = { key: string; url: string; file?: File };
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 const emptyRow = (): Row => ({ key: uid(), quantity: "", name: "" });
@@ -59,12 +68,12 @@ export function RecipeFormModal({ open, recipe, onClose, onSubmit }: Props) {
   const [prepTime, setPrepTime] = useState("15");
   const [cookTime, setCookTime] = useState("30");
   const [servings, setServings] = useState("4");
-  const [imageSource, setImageSource] = useState<ImageSource>("gallery");
+  /** Photos in display order; the first is the main photo. */
+  const [photos, setPhotos] = useState<Photo[]>([]);
+  const [linkOpen, setLinkOpen] = useState(false);
   const [imageLink, setImageLink] = useState("");
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  /** The photo already saved on the recipe being edited (kept unless replaced or removed). */
-  const [existingImage, setExistingImage] = useState<string | undefined>();
-  const [preview, setPreview] = useState<string | null>(null);
+  /** Object URLs made for file previews, released when the card closes. */
+  const objectUrls = useRef<string[]>([]);
   const [ingredients, setIngredients] = useState<Row[]>(() => [emptyRow(), emptyRow()]);
   const [steps, setSteps] = useState<Step[]>(() => [emptyStep()]);
   const [notes, setNotes] = useState("");
@@ -75,9 +84,9 @@ export function RecipeFormModal({ open, recipe, onClose, onSubmit }: Props) {
   useEffect(() => {
     if (!open) return;
     setError(null);
-    setImageFile(null);
     setImageLink("");
-    setImageSource("gallery");
+    setLinkOpen(false);
+    setPhotos(recipe ? recipe.images.map((url) => ({ key: uid(), url })) : []);
     if (recipe) {
       setTitle(recipe.title);
       setAuthor(recipe.author);
@@ -86,7 +95,6 @@ export function RecipeFormModal({ open, recipe, onClose, onSubmit }: Props) {
       setPrepTime(String(recipe.prepTime));
       setCookTime(String(recipe.cookTime));
       setServings(String(recipe.servings));
-      setExistingImage(recipe.imageUrl);
       setIngredients(
         recipe.ingredients.length
           ? recipe.ingredients.map((i) => ({ key: uid(), ...i }))
@@ -102,7 +110,6 @@ export function RecipeFormModal({ open, recipe, onClose, onSubmit }: Props) {
       setPrepTime("15");
       setCookTime("30");
       setServings("4");
-      setExistingImage(undefined);
       setIngredients([emptyRow(), emptyRow()]);
       setSteps([emptyStep()]);
       setNotes("");
@@ -120,34 +127,57 @@ export function RecipeFormModal({ open, recipe, onClose, onSubmit }: Props) {
     };
   }, [open, onClose, saving]);
 
-  // Object URLs for local previews must be released.
+  // Release file previews when the card closes.
   useEffect(() => {
-    if (!imageFile) return setPreview(null);
-    const url = URL.createObjectURL(imageFile);
-    setPreview(url);
-    return () => URL.revokeObjectURL(url);
-  }, [imageFile]);
+    if (open) return;
+    objectUrls.current.forEach((u) => URL.revokeObjectURL(u));
+    objectUrls.current = [];
+  }, [open]);
 
-  const pickFile = (f: File | null) => {
-    if (!f) return;
-    if (!f.type.startsWith("image/")) return setError("אפשר להעלות רק קובץ תמונה.");
-    if (f.size > MAX_UPLOAD_MB * 1024 * 1024) {
-      return setError(`התמונה גדולה מדי. בחרו תמונה עד ${MAX_UPLOAD_MB} MB.`);
-    }
+  const roomLeft = MAX_PHOTOS - photos.length;
+
+  const addFiles = (list: FileList | null) => {
+    const files = Array.from(list ?? []);
+    if (!files.length) return;
+    const maxBytes = MAX_UPLOAD_MB * 1024 * 1024;
+    const images = files.filter((f) => f.type.startsWith("image/"));
+    const small = images.filter((f) => f.size <= maxBytes);
+    const ok = small.slice(0, Math.max(0, roomLeft));
+    const added = ok.map((file) => {
+      const url = URL.createObjectURL(file);
+      objectUrls.current.push(url);
+      return { key: uid(), url, file };
+    });
+    setPhotos((ps) => [...ps, ...added]);
+    if (images.length < files.length) setError("חלק מהקבצים לא היו תמונות ולא נוספו.");
+    else if (small.length < images.length) setError(`תמונה גדולה מ-${MAX_UPLOAD_MB} MB לא נוספה.`);
+    else if (ok.length < small.length) setError(`אפשר עד ${MAX_PHOTOS} תמונות למתכון.`);
+    else setError(null);
+  };
+
+  const addLink = () => {
+    const url = imageLink.trim();
+    if (!url) return;
+    if (!/^https?:\/\//i.test(url)) return setError("קישור לתמונה צריך להתחיל ב-http:// או https://");
+    if (roomLeft <= 0) return setError(`אפשר עד ${MAX_PHOTOS} תמונות למתכון.`);
+    setPhotos((ps) => [...ps, { key: uid(), url }]);
+    setImageLink("");
+    setLinkOpen(false);
     setError(null);
-    setImageFile(f);
-    setImageLink("");
   };
 
-  const link = imageLink.trim();
-  // Priority: a newly picked photo, then a pasted link, then the photo the recipe already had.
-  const shownImage = preview ?? (link || existingImage || null);
-
-  const clearImage = () => {
-    setImageFile(null);
-    setImageLink("");
-    setExistingImage(undefined);
-  };
+  const removePhoto = (key: string) => setPhotos((ps) => ps.filter((p) => p.key !== key));
+  const makeCover = (key: string) =>
+    setPhotos((ps) => [...ps.filter((p) => p.key === key), ...ps.filter((p) => p.key !== key)]);
+  const movePhoto = (key: string, by: -1 | 1) =>
+    setPhotos((ps) => {
+      const i = ps.findIndex((p) => p.key === key);
+      const j = i + by;
+      if (i < 0 || j < 0 || j >= ps.length) return ps;
+      const next = [...ps];
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
+    });
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -160,9 +190,6 @@ export function RecipeFormModal({ open, recipe, onClose, onSubmit }: Props) {
     if (!author.trim()) return setError("כתבו את השם שלכם, כדי שידעו מי העלה את המתכון.");
     if (!cleanIngredients.length) return setError("הוסיפו לפחות מצרך אחד.");
     if (!cleanSteps.length) return setError("הוסיפו לפחות שלב אחד באופן ההכנה.");
-    if (!imageFile && link && !/^https?:\/\//i.test(link)) {
-      return setError("קישור לתמונה צריך להתחיל ב-http:// או https://");
-    }
 
     setSaving(true);
     setError(null);
@@ -181,12 +208,11 @@ export function RecipeFormModal({ open, recipe, onClose, onSubmit }: Props) {
           prepTime: Math.max(0, Number(prepTime) || 0),
           cookTime: Math.max(0, Number(cookTime) || 0),
           servings: Math.max(1, Number(servings) || 1),
-          imageUrl: imageFile ? undefined : link || existingImage || undefined,
           ingredients: cleanIngredients,
           steps: cleanSteps,
           chefsNotes: notes.trim() || undefined,
         },
-        imageFile,
+        photos.map((p): PhotoInput => (p.file ? { file: p.file } : { url: p.url })),
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "משהו השתבש בשמירת המתכון.");
@@ -304,87 +330,138 @@ export function RecipeFormModal({ open, recipe, onClose, onSubmit }: Props) {
                   </Field>
                 </div>
 
-                {/* Photo */}
+                {/* Photos */}
                 <fieldset>
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <legend className="card-label">תמונה של המנה</legend>
-                    <div className="flex rounded-full border border-ink-faint/40 p-0.5 font-sans text-xs" role="tablist">
-                      {(
-                        [
-                          ["gallery", "🖼️ מהגלריה"],
-                          ["camera", "📷 צילום"],
-                          ["link", "🔗 קישור"],
-                        ] as const
-                      ).map(([m, label]) => (
-                        <button
-                          key={m}
-                          type="button"
-                          role="tab"
-                          aria-selected={imageSource === m}
-                          onClick={() => setImageSource(m)}
-                          className={`rounded-full px-3 py-1 transition ${
-                            imageSource === m ? "bg-leather text-paper" : "text-ink-soft hover:text-ink"
-                          }`}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="mt-2 flex items-center gap-4">
-                    <div className="photo-frame relative flex h-24 w-28 shrink-0 items-center justify-center overflow-hidden bg-paper-dark">
-                      {shownImage ? (
-                        <img src={shownImage} alt="" className="h-full w-full object-cover" />
-                      ) : (
-                        <span className="font-hand text-2xl font-bold text-ink-faint">תמונה</span>
-                      )}
-                    </div>
-                    <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-                      {imageSource === "link" ? (
+                  <legend className="card-label">
+                    תמונות של המנה
+                    <span className="ms-2 font-normal text-ink-faint">
+                      {photos.length}/{MAX_PHOTOS} · הראשונה היא התמונה הראשית
+                    </span>
+                  </legend>
+
+                  {photos.length > 0 && (
+                    <ul className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-4">
+                      <AnimatePresence initial={false}>
+                        {photos.map((photo, i) => (
+                          <motion.li
+                            key={photo.key}
+                            layout
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            className={`photo-frame relative aspect-[4/3] overflow-hidden bg-paper-dark ${
+                              i === 0 ? "ring-2 ring-leather ring-offset-2 ring-offset-[#fffcf3]" : ""
+                            }`}
+                          >
+                            <img src={photo.url} alt={`תמונה ${i + 1}`} className="h-full w-full object-cover" />
+                            {i === 0 && (
+                              <span className="absolute start-1 top-1 rounded bg-leather/90 px-1.5 py-0.5 font-sans text-[10px] font-bold text-paper">
+                                ראשית
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => removePhoto(photo.key)}
+                              aria-label={`הסרת תמונה ${i + 1}`}
+                              className="absolute end-1 top-1 rounded-full bg-black/60 p-1 text-white transition hover:bg-black/80"
+                            >
+                              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" aria-hidden>
+                                <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                              </svg>
+                            </button>
+                            {photos.length > 1 && (
+                              <div className="absolute inset-x-1 bottom-1 flex items-center justify-between gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => movePhoto(photo.key, -1)}
+                                  disabled={i === 0}
+                                  aria-label={`הזזת תמונה ${i + 1} קדימה`}
+                                  className="photo-chip disabled:invisible"
+                                >
+                                  →
+                                </button>
+                                {i > 0 && (
+                                  <button type="button" onClick={() => makeCover(photo.key)} className="photo-chip">
+                                    ★ לראשית
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => movePhoto(photo.key, 1)}
+                                  disabled={i === photos.length - 1}
+                                  aria-label={`הזזת תמונה ${i + 1} אחורה`}
+                                  className="photo-chip disabled:invisible"
+                                >
+                                  ←
+                                </button>
+                              </div>
+                            )}
+                          </motion.li>
+                        ))}
+                      </AnimatePresence>
+                    </ul>
+                  )}
+
+                  {roomLeft > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2 font-sans text-sm">
+                      <label className="photo-add">
                         <input
-                          className="card-input"
-                          type="url"
-                          dir="ltr"
-                          value={imageLink}
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="sr-only"
                           onChange={(e) => {
-                            setImageLink(e.target.value);
-                            if (e.target.value) setImageFile(null);
+                            addFiles(e.target.files);
+                            e.target.value = "";
                           }}
-                          placeholder="https://…/my-dish.jpg"
                         />
-                      ) : (
-                        <label className="flex w-full cursor-pointer items-center justify-center rounded border-2 border-dashed border-ink-faint/40 px-4 py-4 text-center font-sans text-sm text-ink-soft transition hover:border-leather/60 hover:text-ink">
-                          <input
-                            // Re-mount per source so the right picker opens.
-                            key={imageSource}
-                            type="file"
-                            accept="image/*"
-                            // No capture → phones offer the photo gallery; capture → camera.
-                            {...(imageSource === "camera" ? { capture: "environment" as const } : {})}
-                            className="sr-only"
-                            onChange={(e) => {
-                              pickFile(e.target.files?.[0] ?? null);
-                              e.target.value = "";
-                            }}
-                          />
-                          {imageFile
-                            ? `✔ ${imageFile.name}`
-                            : imageSource === "camera"
-                              ? "צלמו את המנה עכשיו"
-                              : "בחרו תמונה מהגלריה של המכשיר"}
-                        </label>
-                      )}
-                      {shownImage && (
-                        <button
-                          type="button"
-                          onClick={clearImage}
-                          className="self-start font-sans text-xs text-leather underline-offset-2 hover:underline"
-                        >
-                          הסרת התמונה
-                        </button>
-                      )}
+                        🖼️ {photos.length ? "עוד מהגלריה" : "בחירה מהגלריה"}
+                      </label>
+                      <label className="photo-add">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          className="sr-only"
+                          onChange={(e) => {
+                            addFiles(e.target.files);
+                            e.target.value = "";
+                          }}
+                        />
+                        📷 צילום
+                      </label>
+                      <button type="button" onClick={() => setLinkOpen((v) => !v)} className="photo-add">
+                        🔗 קישור
+                      </button>
                     </div>
-                  </div>
+                  )}
+                  {roomLeft > 0 && linkOpen && (
+                    <div className="mt-2 flex gap-2">
+                      <input
+                        className="card-input"
+                        type="url"
+                        dir="ltr"
+                        autoFocus
+                        value={imageLink}
+                        onChange={(e) => setImageLink(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            addLink();
+                          }
+                        }}
+                        placeholder="https://…/my-dish.jpg"
+                      />
+                      <button type="button" onClick={addLink} className="photo-add shrink-0">
+                        הוספה
+                      </button>
+                    </div>
+                  )}
+                  {photos.length === 0 && (
+                    <p className="mt-1 font-sans text-xs text-ink-faint">
+                      אפשר לבחור כמה תמונות בבת אחת מהגלריה. בטלפון לוחצים לחיצה ארוכה על תמונה ואז מסמנים עוד.
+                    </p>
+                  )}
                 </fieldset>
 
                 {/* Ingredients */}

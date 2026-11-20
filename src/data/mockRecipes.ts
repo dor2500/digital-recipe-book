@@ -14,7 +14,7 @@ export const mockRecipes: Recipe[] = [
     prepTime: 10,
     cookTime: 25,
     servings: 3,
-    imageUrl: "https://images.unsplash.com/photo-1590412200988-a436970781fa?w=900&q=80",
+    images: ["https://images.unsplash.com/photo-1590412200988-a436970781fa?w=900&q=80"],
     description: "ביצים עלומות ברוטב עגבניות ופלפלים מעושן ועשיר.",
     ingredients: [
       { quantity: "3 כפות", name: "שמן זית" },
@@ -46,7 +46,7 @@ export const mockRecipes: Recipe[] = [
     prepTime: 10,
     cookTime: 15,
     servings: 4,
-    imageUrl: "https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=900&q=80",
+    images: ["https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=900&q=80"],
     description: "גבוה, רך וזהוב: המגדל שפתח כל סוף שבוע.",
     ingredients: [
       { quantity: "2 כוסות", name: "קמח לבן" },
@@ -77,7 +77,7 @@ export const mockRecipes: Recipe[] = [
     prepTime: 20,
     cookTime: 75,
     servings: 4,
-    imageUrl: "https://images.unsplash.com/photo-1598103442097-8b74394b95c6?w=900&q=80",
+    images: ["https://images.unsplash.com/photo-1598103442097-8b74394b95c6?w=900&q=80"],
     description: "עור פריך, בשר עסיסי ותבנית תפוחי אדמה מתחת.",
     ingredients: [
       { quantity: "1 (1.8 ק״ג)", name: "עוף שלם" },
@@ -106,7 +106,7 @@ export const mockRecipes: Recipe[] = [
     prepTime: 30,
     cookTime: 10,
     servings: 2,
-    imageUrl: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=900&q=80",
+    images: ["https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=900&q=80"],
     description: "שוליים מנומרים, עגבנייה חיה ומוצרלה חלבית.",
     ingredients: [
       { quantity: "2 כדורי", name: "בצק פיצה (250 גרם כל אחד)" },
@@ -133,7 +133,7 @@ export const mockRecipes: Recipe[] = [
     prepTime: 15,
     cookTime: 30,
     servings: 2,
-    imageUrl: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=900&q=80",
+    images: ["https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=900&q=80"],
     description: "גרגירי חומוס קריספיים, ירוקים ורוטב טחינה-לימון קרמי.",
     ingredients: [
       { quantity: "קופסה", name: "גרגירי חומוס, מסוננים ומיובשים" },
@@ -163,7 +163,7 @@ export const mockRecipes: Recipe[] = [
     prepTime: 10,
     cookTime: 30,
     servings: 4,
-    imageUrl: "https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=900&q=80",
+    images: ["https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=900&q=80"],
     description: "סיר נחמה לאמצע השבוע, משיי בזכות חלב הקוקוס.",
     ingredients: [
       { quantity: "כוס", name: "עדשים כתומות, שטופות" },
@@ -191,7 +191,7 @@ export const mockRecipes: Recipe[] = [
     prepTime: 30,
     cookTime: 35,
     servings: 8,
-    imageUrl: "https://images.unsplash.com/photo-1551024506-0bccd828d307?w=900&q=80",
+    images: ["https://images.unsplash.com/photo-1551024506-0bccd828d307?w=900&q=80"],
     description: "קלתית פריכה עם גנאש מבריק שבקושי התייצב.",
     ingredients: [
       { quantity: "1", name: "קלתית בצק פריך אפויה, 23 ס״מ" },

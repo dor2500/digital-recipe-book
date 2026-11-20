@@ -5,13 +5,14 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { BookmarkTabs } from "@/components/book/BookmarkTabs";
 import type { BookHandle } from "@/components/book/Book";
-import type { OwnerActions } from "@/components/book/PageContents";
+import type { PageActions } from "@/components/book/PageContents";
+import { PhotoViewer, type PhotoViewerState } from "@/components/PhotoViewer";
 import { ConfirmDeleteDialog } from "@/components/form/ConfirmDeleteDialog";
 import { RecipeFormModal } from "@/components/form/RecipeFormModal";
 import { useElementSize } from "@/hooks/useElementSize";
 import { useRecipes } from "@/hooks/useRecipes";
 import { buildBookLayout, categoryAtPage } from "@/lib/bookLayout";
-import type { NewRecipe, Recipe } from "@/lib/types";
+import type { NewRecipe, PhotoInput, Recipe } from "@/lib/types";
 
 // page-flip touches `window` at import time, so it is client-only.
 const Book = dynamic(() => import("@/components/book/Book").then((m) => m.Book), {
@@ -44,6 +45,7 @@ export default function BookApp() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Recipe | null>(null);
   const [deleting, setDeleting] = useState<Recipe | null>(null);
+  const [viewer, setViewer] = useState<PhotoViewerState | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   /** Bumped on edits so the book re-reads page contents. */
   const [contentVersion, setContentVersion] = useState(0);
@@ -84,7 +86,7 @@ export default function BookApp() {
     setTimeout(() => bookRef.current?.flipTo(target), 300);
   }, []);
 
-  const modalOpen = formOpen || !!deleting;
+  const modalOpen = formOpen || !!deleting || !!viewer;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (modalOpen || (e.target as HTMLElement).closest("input, textarea, select")) return;
@@ -104,13 +106,14 @@ export default function BookApp() {
 
   const goTo = useCallback((p: number) => bookRef.current?.flipTo(p), []);
 
-  const ownerActions = useMemo<OwnerActions>(
+  const ownerActions = useMemo<PageActions>(
     () => ({
       onEdit: (recipe) => {
         setEditing(recipe);
         setFormOpen(true);
       },
       onDelete: (recipe) => setDeleting(recipe),
+      onViewPhotos: (images, index, title) => setViewer({ images, index, title }),
     }),
     [],
   );
@@ -122,10 +125,11 @@ export default function BookApp() {
 
   const closeForm = useCallback(() => setFormOpen(false), []);
   const cancelDelete = useCallback(() => setDeleting(null), []);
+  const closeViewer = useCallback(() => setViewer(null), []);
 
-  const handleSubmit = async (input: NewRecipe, file: File | null) => {
+  const handleSubmit = async (input: NewRecipe, photos: PhotoInput[]) => {
     if (editing) {
-      const updated = await updateRecipe(editing.id, input, file);
+      const updated = await updateRecipe(editing.id, input, photos);
       // The category may have moved the recipe to another section.
       pendingFlip.current = buildBookLayout(recipes.map((r) => (r.id === updated.id ? updated : r)))
         .recipePage[updated.id];
@@ -135,7 +139,7 @@ export default function BookApp() {
       return;
     }
     let target = 0;
-    const created = await addRecipe(input, file, (recipe) => {
+    const created = await addRecipe(input, photos, (recipe) => {
       target = buildBookLayout([...recipes, recipe]).recipePage[recipe.id];
       pendingFlip.current = target;
     });
@@ -313,6 +317,7 @@ export default function BookApp() {
 
       <RecipeFormModal open={formOpen} recipe={editing} onClose={closeForm} onSubmit={handleSubmit} />
       <ConfirmDeleteDialog recipe={deleting} onCancel={cancelDelete} onConfirm={handleDelete} />
+      <PhotoViewer state={viewer} onClose={closeViewer} />
 
       <AnimatePresence>
         {toast && (

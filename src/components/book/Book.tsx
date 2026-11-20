@@ -11,7 +11,7 @@ import {
   RecipeFirst,
   RecipeSecond,
   TocPage,
-  type OwnerActions,
+  type PageActions,
 } from "./PageContents";
 
 /** Portrait page proportions, roughly a real cookbook (≈ 7.5 × 10 in). */
@@ -49,7 +49,7 @@ interface BookProps {
   /** Fired once page-flip has laid out the pages and can take commands. */
   onReady?: () => void;
   viewerId: string | null;
-  ownerActions: OwnerActions;
+  ownerActions: PageActions;
 }
 
 /**

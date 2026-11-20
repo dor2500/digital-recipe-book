@@ -380,6 +380,56 @@ body {
   color: #5c4a3b;
 }
 
+/* Recipe card: add-photo buttons and the small controls on each thumbnail. */
+.photo-add {
+  display: inline-flex;
+  cursor: pointer;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  border: 1.5px dashed rgba(138, 118, 96, 0.55);
+  background: rgba(255, 255, 255, 0.5);
+  padding: 0.35rem 0.85rem;
+  color: #5c4a3b;
+  transition: border-color 0.15s, color 0.15s, background-color 0.15s;
+}
+.photo-add:hover {
+  border-color: #5a1f1b;
+  color: #2b211a;
+  background: #fff;
+}
+.photo-chip {
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 0.1rem 0.45rem;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  transition: background-color 0.15s;
+}
+.photo-chip:hover {
+  background: rgba(0, 0, 0, 0.85);
+}
+
+/* Photo browser on a recipe page. */
+.photo-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 1.9rem;
+  width: 1.9rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 1rem;
+  line-height: 1;
+  transition: background-color 0.15s;
+}
+.photo-nav:hover {
+  background: rgba(0, 0, 0, 0.7);
+}
+
 /* Edit / delete buttons on a recipe page, shown only to its uploader. */
 .owner-btn {
   display: inline-flex;
