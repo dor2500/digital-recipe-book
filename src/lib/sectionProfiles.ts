@@ -138,3 +138,22 @@ export function bestUnit(minutes: number, fallback: TimeUnit): TimeUnit {
   if (minutes % 60 === 0) return "hour";
   return "min";
 }
+
+/**
+ * Reads what a cook typed into a time box, in that box's unit, as minutes.
+ * Accepts "2", "1.5", "1,5" and clock style "1:30" (hours:minutes in the
+ * minutes or hours box, days:hours in the days box). Empty means 0.
+ * Returns null when it cannot be read.
+ */
+export function parseDuration(text: string, unit: TimeUnit): number | null {
+  const t = text.trim().replace(",", ".");
+  if (!t) return 0;
+  if (/^\d+(\.\d+)?$/.test(t)) return Math.round(Number(t) * UNIT_MINUTES[unit]);
+  const clock = /^(\d+):(\d{1,2})$/.exec(t);
+  if (clock) {
+    const [whole, part] = [Number(clock[1]), Number(clock[2])];
+    if (unit === "day") return part < 24 ? whole * 1440 + part * 60 : null;
+    return part < 60 ? whole * 60 + part : null;
+  }
+  return null;
+}

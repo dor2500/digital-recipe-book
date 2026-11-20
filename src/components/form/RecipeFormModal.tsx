@@ -16,6 +16,7 @@ import {
   UNIT_LABEL,
   UNIT_MINUTES,
   bestUnit,
+  parseDuration,
   type TimeField,
   type TimeUnit,
 } from "@/lib/sectionProfiles";
@@ -242,7 +243,7 @@ export function RecipeFormModal({ open, recipe, onClose, onSubmit }: Props) {
   const toMinutes = (field: TimeField) => {
     if (!profile.times.some((s) => s.field === field)) return 0;
     const { value, unit } = times[field];
-    return Math.max(0, Math.round((Number(value) || 0) * UNIT_MINUTES[unit]));
+    return parseDuration(value, unit) ?? 0;
   };
 
   const submit = async (e: FormEvent) => {
@@ -254,6 +255,14 @@ export function RecipeFormModal({ open, recipe, onClose, onSubmit }: Props) {
 
     if (!title.trim()) return setError("למתכון חייב להיות שם.");
     if (!author.trim()) return setError("כתבו את השם שלכם, כדי שידעו מי העלה את המתכון.");
+    for (const spec of profile.times) {
+      if (parseDuration(times[spec.field].value, times[spec.field].unit) === null) {
+        return setError(`לא הבנו את זמן ה${spec.label}. כתבו מספר, למשל 1.5, או שעון, למשל 1:30.`);
+      }
+    }
+    if (!/^\d+$/.test(servings.trim()) || Number(servings) < 1) {
+      return setError(`כמה ${profile.yieldLabel}? כתבו מספר שלם, למשל 4.`);
+    }
     if (!cleanIngredients.length) return setError("הוסיפו לפחות מצרך אחד.");
     if (!cleanSteps.length) return setError("הוסיפו לפחות שלב אחד באופן ההכנה.");
 
@@ -307,6 +316,8 @@ export function RecipeFormModal({ open, recipe, onClose, onSubmit }: Props) {
               aria-modal="true"
               aria-labelledby={titleId}
               onSubmit={submit}
+              // Our own Hebrew messages instead of the browser's English bubbles.
+              noValidate
               className="recipe-card relative w-full max-w-2xl rounded-[6px] shadow-card"
               initial={{ y: 60, rotate: 3, opacity: 0 }}
               animate={{ y: 0, rotate: 0.6, opacity: 1 }}
@@ -392,10 +403,10 @@ export function RecipeFormModal({ open, recipe, onClose, onSubmit }: Props) {
                       <div className="flex gap-1">
                         <input
                           className="card-input min-w-0"
-                          type="number"
+                          type="text"
                           inputMode="decimal"
-                          min={0}
-                          step="any"
+                          dir="ltr"
+                          title="מספר (1.5) או שעון (1:30)"
                           value={times[spec.field].value}
                           onChange={(e) => setTime(spec.field, { value: e.target.value })}
                           aria-label={`${spec.label} (${UNIT_LABEL[times[spec.field].unit]})`}
@@ -418,9 +429,9 @@ export function RecipeFormModal({ open, recipe, onClose, onSubmit }: Props) {
                   <Field label={profile.yieldLabel}>
                     <input
                       className="card-input"
-                      type="number"
+                      type="text"
                       inputMode="numeric"
-                      min={1}
+                      dir="ltr"
                       value={servings}
                       onChange={(e) => {
                         timesTouched.current = true;
