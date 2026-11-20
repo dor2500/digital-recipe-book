@@ -2,15 +2,8 @@
 
 import { useState, type ReactNode } from "react";
 import type { TocLine } from "@/lib/bookLayout";
+import { SECTION_PROFILE, formatDuration } from "@/lib/sectionProfiles";
 import { CATEGORY_LABEL, type Recipe } from "@/lib/types";
-
-const fmtMinutes = (m: number) => {
-  if (m < 60) return `${m} דק׳`;
-  const h = Math.floor(m / 60);
-  const rest = m % 60;
-  const hours = h === 1 ? "שעה" : h === 2 ? "שעתיים" : `${h} שע׳`;
-  return rest ? `${hours} ו-${rest} דק׳` : hours;
-};
 
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString("he-IL", { day: "numeric", month: "long", year: "numeric" });
@@ -231,6 +224,32 @@ export interface PageActions {
   onViewPhotos: (images: string[], index: number, title: string) => void;
 }
 
+/**
+ * The recipe's numbers, named for its section: a bread shows
+ * "הכנה · התפחה · אפייה · יחידות", a soup "הכנה · בישול · מנות".
+ * Stages with no time are left out.
+ */
+function RecipeFacts({ recipe }: { recipe: Recipe }) {
+  const profile = SECTION_PROFILE[recipe.category];
+  const facts: [string, string][] = profile.times
+    .filter((spec) => (recipe[spec.field] ?? 0) > 0)
+    .map((spec) => [spec.label, formatDuration(recipe[spec.field] ?? 0)]);
+  facts.push([profile.yieldLabel, String(recipe.servings)]);
+  return (
+    <dl
+      className="my-[3.5%] grid border-y border-ink-faint/30 py-[2%] text-center font-sans"
+      style={{ gridTemplateColumns: `repeat(${facts.length}, minmax(0, 1fr))` }}
+    >
+      {facts.map(([k, v]) => (
+        <div key={k} className="border-ink-faint/30 px-1 [&:not(:first-child)]:border-s">
+          <dt className="text-[clamp(10px,2cqw,12px)] text-ink-faint">{k}</dt>
+          <dd className="text-[clamp(11px,2.5cqw,15px)] font-semibold text-ink">{v}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 /** First page of a recipe (in reading order): title, uploader, photo, ingredients. */
 export function RecipeFirst({
   recipe,
@@ -277,18 +296,7 @@ export function RecipeFirst({
         {recipe.updatedAt && <span className="text-ink-faint"> · עודכן</span>}
       </p>
 
-      <dl className="my-[3.5%] grid grid-cols-3 border-y border-ink-faint/30 py-[2%] text-center font-sans">
-        {[
-          ["הכנה", fmtMinutes(recipe.prepTime)],
-          ["בישול", fmtMinutes(recipe.cookTime)],
-          ["מנות", String(recipe.servings)],
-        ].map(([k, v]) => (
-          <div key={k} className="border-ink-faint/30 [&:not(:first-child)]:border-s">
-            <dt className="text-[clamp(10px,2cqw,12px)] text-ink-faint">{k}</dt>
-            <dd className="text-[clamp(11px,2.5cqw,15px)] font-semibold text-ink">{v}</dd>
-          </div>
-        ))}
-      </dl>
+      <RecipeFacts recipe={recipe} />
 
       <RecipePhotos recipe={recipe} onView={actions.onViewPhotos} />
 

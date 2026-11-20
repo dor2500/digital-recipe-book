@@ -190,6 +190,7 @@ export const mockRecipes: Recipe[] = [
     category: "Desserts",
     prepTime: 30,
     cookTime: 35,
+    restTime: 60,
     servings: 8,
     images: ["https://images.unsplash.com/photo-1551024506-0bccd828d307?w=900&q=80"],
     description: "קלתית פריכה עם גנאש מבריק שבקושי התייצב.",

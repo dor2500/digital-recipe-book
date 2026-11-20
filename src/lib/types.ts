@@ -73,8 +73,13 @@ export interface Recipe {
   category: Category;
   /** Minutes. */
   prepTime: number;
-  /** Minutes. */
+  /** Minutes. Cooking or baking, depending on the section. */
   cookTime: number;
+  /**
+   * Minutes of waiting: rising, resting, chilling or fermenting, depending on
+   * the section (see SECTION_PROFILE). 0 or missing when there is none.
+   */
+  restTime?: number;
   servings: number;
   /**
    * Photos of the dish, in order; the first one is the cover shown on the page.

@@ -11,6 +11,14 @@ import {
   type PhotoInput,
   type Recipe,
 } from "@/lib/types";
+import {
+  SECTION_PROFILE,
+  UNIT_LABEL,
+  UNIT_MINUTES,
+  bestUnit,
+  type TimeField,
+  type TimeUnit,
+} from "@/lib/sectionProfiles";
 
 interface Props {
   open: boolean;
@@ -24,6 +32,32 @@ type Row = { key: string; quantity: string; name: string };
 type Step = { key: string; text: string };
 /** A photo on the card: a saved/pasted URL, or a new file shown through an object URL. */
 type Photo = { key: string; url: string; file?: File };
+
+type TimeValue = { value: string; unit: TimeUnit };
+type Times = Record<TimeField, TimeValue>;
+const TIME_FIELDS: TimeField[] = ["prepTime", "restTime", "cookTime"];
+
+/** Starting times for a new recipe in this section. */
+function initialTimes(category: Category): Times {
+  const t = {} as Times;
+  for (const field of TIME_FIELDS) {
+    const spec = SECTION_PROFILE[category].times.find((s) => s.field === field);
+    t[field] = spec ? { value: String(spec.initial), unit: spec.unit } : { value: "", unit: "min" };
+  }
+  return t;
+}
+
+/** A saved recipe's times, each shown in the unit it reads best in. */
+function recipeTimes(recipe: Recipe): Times {
+  const t = {} as Times;
+  for (const field of TIME_FIELDS) {
+    const minutes = recipe[field] ?? 0;
+    const spec = SECTION_PROFILE[recipe.category].times.find((s) => s.field === field);
+    const unit = bestUnit(minutes, spec?.unit ?? "min");
+    t[field] = { value: minutes ? String(minutes / UNIT_MINUTES[unit]) : "", unit };
+  }
+  return t;
+}
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 const emptyRow = (): Row => ({ key: uid(), quantity: "", name: "" });
@@ -65,9 +99,10 @@ export function RecipeFormModal({ open, recipe, onClose, onSubmit }: Props) {
   const [author, setAuthor] = useState("");
   const [category, setCategory] = useState<Category>("Mains");
   const [description, setDescription] = useState("");
-  const [prepTime, setPrepTime] = useState("15");
-  const [cookTime, setCookTime] = useState("30");
+  const [times, setTimes] = useState<Times>(() => initialTimes("Mains"));
   const [servings, setServings] = useState("4");
+  /** Once the cook typed a time or yield, switching section keeps their numbers. */
+  const timesTouched = useRef(false);
   /** Photos in display order; the first is the main photo. */
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [linkOpen, setLinkOpen] = useState(false);
@@ -87,13 +122,13 @@ export function RecipeFormModal({ open, recipe, onClose, onSubmit }: Props) {
     setImageLink("");
     setLinkOpen(false);
     setPhotos(recipe ? recipe.images.map((url) => ({ key: uid(), url })) : []);
+    timesTouched.current = !!recipe;
     if (recipe) {
       setTitle(recipe.title);
       setAuthor(recipe.author);
       setCategory(recipe.category);
       setDescription(recipe.description ?? "");
-      setPrepTime(String(recipe.prepTime));
-      setCookTime(String(recipe.cookTime));
+      setTimes(recipeTimes(recipe));
       setServings(String(recipe.servings));
       setIngredients(
         recipe.ingredients.length
@@ -107,9 +142,8 @@ export function RecipeFormModal({ open, recipe, onClose, onSubmit }: Props) {
       setAuthor(rememberedAuthor());
       setCategory("Mains");
       setDescription("");
-      setPrepTime("15");
-      setCookTime("30");
-      setServings("4");
+      setTimes(initialTimes("Mains"));
+      setServings(String(SECTION_PROFILE.Mains.yieldInitial));
       setIngredients([emptyRow(), emptyRow()]);
       setSteps([emptyStep()]);
       setNotes("");
@@ -179,6 +213,38 @@ export function RecipeFormModal({ open, recipe, onClose, onSubmit }: Props) {
       return next;
     });
 
+  const profile = SECTION_PROFILE[category];
+
+  /** Switching section relabels the times; untouched new recipes also get that section's typical numbers. */
+  const changeCategory = (next: Category) => {
+    setCategory(next);
+    if (!timesTouched.current) {
+      setTimes(initialTimes(next));
+      setServings(String(SECTION_PROFILE[next].yieldInitial));
+      return;
+    }
+    // Keep the cook's numbers, but give a newly shown empty field this section's unit.
+    setTimes((t) => {
+      const updated = { ...t };
+      for (const spec of SECTION_PROFILE[next].times) {
+        if (!Number(t[spec.field].value)) updated[spec.field] = { value: "", unit: spec.unit };
+      }
+      return updated;
+    });
+  };
+
+  const setTime = (field: TimeField, patch: Partial<TimeValue>) => {
+    timesTouched.current = true;
+    setTimes((t) => ({ ...t, [field]: { ...t[field], ...patch } }));
+  };
+
+  /** Minutes for a stage this section has; stages it does not have are saved as 0. */
+  const toMinutes = (field: TimeField) => {
+    if (!profile.times.some((s) => s.field === field)) return 0;
+    const { value, unit } = times[field];
+    return Math.max(0, Math.round((Number(value) || 0) * UNIT_MINUTES[unit]));
+  };
+
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     const cleanIngredients = ingredients
@@ -205,8 +271,9 @@ export function RecipeFormModal({ open, recipe, onClose, onSubmit }: Props) {
           author: author.trim(),
           category,
           description: description.trim() || undefined,
-          prepTime: Math.max(0, Number(prepTime) || 0),
-          cookTime: Math.max(0, Number(cookTime) || 0),
+          prepTime: toMinutes("prepTime"),
+          restTime: toMinutes("restTime"),
+          cookTime: toMinutes("cookTime"),
           servings: Math.max(1, Number(servings) || 1),
           ingredients: cleanIngredients,
           steps: cleanSteps,
@@ -276,7 +343,7 @@ export function RecipeFormModal({ open, recipe, onClose, onSubmit }: Props) {
                       className="card-input font-serif text-xl"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
-                      placeholder="למשל: פלפלים ממולאים של סבתא"
+                      placeholder={`למשל: ${profile.example.title}`}
                       maxLength={120}
                       required
                     />
@@ -285,7 +352,7 @@ export function RecipeFormModal({ open, recipe, onClose, onSubmit }: Props) {
                     <select
                       className="card-input"
                       value={category}
-                      onChange={(e) => setCategory(e.target.value as Category)}
+                      onChange={(e) => changeCategory(e.target.value as Category)}
                     >
                       {CATEGORIES.map((c) => (
                         <option key={c} value={c}>
@@ -318,15 +385,48 @@ export function RecipeFormModal({ open, recipe, onClose, onSubmit }: Props) {
                   </Field>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
-                  <Field label="הכנה" hint="דקות">
-                    <input className="card-input" type="number" inputMode="numeric" min={0} value={prepTime} onChange={(e) => setPrepTime(e.target.value)} />
-                  </Field>
-                  <Field label="בישול" hint="דקות">
-                    <input className="card-input" type="number" inputMode="numeric" min={0} value={cookTime} onChange={(e) => setCookTime(e.target.value)} />
-                  </Field>
-                  <Field label="מנות">
-                    <input className="card-input" type="number" inputMode="numeric" min={1} value={servings} onChange={(e) => setServings(e.target.value)} />
+                {/* Times and yield: which ones, and what they are called, depend on the section. */}
+                <div className={`grid gap-4 ${profile.times.length >= 3 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"}`}>
+                  {profile.times.map((spec) => (
+                    <Field key={spec.field} label={spec.label}>
+                      <div className="flex gap-1">
+                        <input
+                          className="card-input min-w-0"
+                          type="number"
+                          inputMode="decimal"
+                          min={0}
+                          step="any"
+                          value={times[spec.field].value}
+                          onChange={(e) => setTime(spec.field, { value: e.target.value })}
+                          aria-label={`${spec.label} (${UNIT_LABEL[times[spec.field].unit]})`}
+                        />
+                        <select
+                          className="card-input w-auto shrink-0 px-1 text-sm"
+                          value={times[spec.field].unit}
+                          onChange={(e) => setTime(spec.field, { unit: e.target.value as TimeUnit })}
+                          aria-label={`יחידת זמן ל${spec.label}`}
+                        >
+                          {(Object.keys(UNIT_LABEL) as TimeUnit[]).map((u) => (
+                            <option key={u} value={u}>
+                              {UNIT_LABEL[u]}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </Field>
+                  ))}
+                  <Field label={profile.yieldLabel}>
+                    <input
+                      className="card-input"
+                      type="number"
+                      inputMode="numeric"
+                      min={1}
+                      value={servings}
+                      onChange={(e) => {
+                        timesTouched.current = true;
+                        setServings(e.target.value);
+                      }}
+                    />
                   </Field>
                 </div>
 
@@ -483,7 +583,7 @@ export function RecipeFormModal({ open, recipe, onClose, onSubmit }: Props) {
                             onChange={(e) =>
                               setIngredients((rs) => rs.map((r) => (r.key === row.key ? { ...r, quantity: e.target.value } : r)))
                             }
-                            placeholder="2 כוסות"
+                            placeholder={profile.example.ingredient[0]}
                             aria-label={`כמות למצרך ${i + 1}`}
                           />
                           <input
@@ -498,7 +598,7 @@ export function RecipeFormModal({ open, recipe, onClose, onSubmit }: Props) {
                                 setIngredients((rs) => [...rs, emptyRow()]);
                               }
                             }}
-                            placeholder="קמח לבן"
+                            placeholder={profile.example.ingredient[1]}
                             aria-label={`מצרך ${i + 1}`}
                           />
                           <RemoveButton
@@ -536,7 +636,7 @@ export function RecipeFormModal({ open, recipe, onClose, onSubmit }: Props) {
                             onChange={(e) =>
                               setSteps((ss) => ss.map((s) => (s.key === step.key ? { ...s, text: e.target.value } : s)))
                             }
-                            placeholder={i === 0 ? "מחממים תנור ל-180 מעלות…" : "ואז…"}
+                            placeholder={i === 0 ? profile.example.step : "ואז…"}
                             aria-label={`שלב ${i + 1}`}
                           />
                           <RemoveButton

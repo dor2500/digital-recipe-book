@@ -10,6 +10,8 @@ interface RecipeRow {
   category: Recipe["category"];
   prep_time: number;
   cook_time: number;
+  /** Rising / resting / chilling / fermenting. Missing until add-rest-time.sql has run. */
+  rest_time?: number | null;
   servings: number;
   /** First photo, kept for older readers of the table. */
   image_url: string | null;
@@ -31,6 +33,7 @@ const fromRow = (r: RecipeRow): Recipe => ({
   category: r.category,
   prepTime: r.prep_time,
   cookTime: r.cook_time,
+  restTime: r.rest_time ?? 0,
   servings: r.servings,
   images: r.images?.length ? r.images : r.image_url ? [r.image_url] : [],
   description: r.description ?? undefined,
@@ -52,9 +55,28 @@ function friendly(error: { code?: string; message: string }): Error {
   return new Error(error.message);
 }
 
-/** PostgREST's answer when the `images` column has not been added yet. */
-const missingImagesColumn = (error: { code?: string; message: string }) =>
-  error.code === "PGRST204" && /images/.test(error.message);
+/**
+ * Columns added after the first schema. A project that has not run their
+ * migration yet still works: a value the old table can do without is dropped,
+ * and anything that would be lost asks the site owner to run the SQL file.
+ */
+const LATER_COLUMNS: Record<string, { canDrop: (value: unknown) => boolean; message: string }> = {
+  images: {
+    // One photo is also kept in image_url.
+    canDrop: (v) => !Array.isArray(v) || v.length <= 1,
+    message: "כדי לשמור כמה תמונות, מנהל האתר צריך להריץ את supabase/add-images.sql. בינתיים אפשר לשמור תמונה אחת.",
+  },
+  rest_time: {
+    canDrop: (v) => !v,
+    message: "כדי לשמור זמן התפחה / מנוחה / צינון / תסיסה, מנהל האתר צריך להריץ את supabase/add-rest-time.sql.",
+  },
+};
+
+/** The later column a PostgREST "column not found" error is about, if any. */
+const missingLaterColumn = (error: { code?: string; message: string }) =>
+  error.code === "PGRST204"
+    ? Object.keys(LATER_COLUMNS).find((c) => error.message.includes(`'${c}'`))
+    : undefined;
 
 const toRow = (r: NewRecipe, images: string[]) => ({
   title: r.title,
@@ -62,8 +84,10 @@ const toRow = (r: NewRecipe, images: string[]) => ({
   category: r.category,
   prep_time: r.prepTime,
   cook_time: r.cookTime,
+  rest_time: r.restTime ?? 0,
   servings: r.servings,
   image_url: images[0] ?? null,
+  images,
   description: r.description ?? null,
   ingredients: r.ingredients,
   steps: r.steps,
@@ -111,21 +135,18 @@ export function createSupabaseRepository(
 
   type Saved = { data: unknown; error: { code?: string; message: string } | null };
 
-  /**
-   * Writes a row with all its photos. A project set up before multi-photo
-   * support has no `images` column yet: then a recipe with one photo is still
-   * saved (in image_url), and more than one asks the owner to run the migration.
-   */
-  function saveRow(images: string[], write: (row: Record<string, unknown>) => PromiseLike<Saved>) {
+  /** Writes a row, stepping around later columns an older table does not have yet. */
+  function saveRow(write: (row: Record<string, unknown>) => PromiseLike<Saved>) {
     return async (row: Record<string, unknown>): Promise<Saved> => {
-      const result = await write({ ...row, images });
-      if (!result.error || !missingImagesColumn(result.error)) return result;
-      if (images.length > 1) {
-        throw new Error(
-          "כדי לשמור כמה תמונות, מנהל האתר צריך להריץ את supabase/add-images.sql. בינתיים אפשר לשמור תמונה אחת.",
-        );
+      let current = { ...row };
+      for (;;) {
+        const result = await write(current);
+        const column = result.error ? missingLaterColumn(result.error) : undefined;
+        if (!column || !(column in current)) return result;
+        if (!LATER_COLUMNS[column].canDrop(current[column])) throw new Error(LATER_COLUMNS[column].message);
+        const { [column]: _dropped, ...rest } = current;
+        current = rest;
       }
-      return write(row);
     };
   }
 
@@ -146,7 +167,7 @@ export function createSupabaseRepository(
     async create(input: NewRecipe, photos: PhotoInput[]) {
       await ensureUser();
       const images = await resolvePhotos(photos, uploadImage);
-      const { data, error } = await saveRow(images, (row) =>
+      const { data, error } = await saveRow((row) =>
         db.from("recipes").insert(row).select().single(),
       )(toRow(input, images));
       if (error) throw friendly(error);
@@ -156,7 +177,7 @@ export function createSupabaseRepository(
     async update(id: string, input: NewRecipe, photos: PhotoInput[]) {
       await ensureUser();
       const images = await resolvePhotos(photos, uploadImage);
-      const { data, error } = await saveRow(images, (row) =>
+      const { data, error } = await saveRow((row) =>
         db.from("recipes").update(row).eq("id", id).select().maybeSingle(),
       )({ ...toRow(input, images), updated_at: new Date().toISOString() });
       if (error) throw friendly(error);

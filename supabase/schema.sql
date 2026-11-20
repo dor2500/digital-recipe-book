@@ -12,6 +12,7 @@ create table if not exists public.recipes (
   category     text not null check (category in ('Breakfast', 'Starters', 'Soups', 'Mains', 'Pizza', 'Pasta', 'Sides', 'Sauces', 'Breads', 'Baking', 'Vegan', 'Desserts', 'Drinks')),
   prep_time    integer not null default 0 check (prep_time >= 0),
   cook_time    integer not null default 0 check (cook_time >= 0),
+  rest_time    integer not null default 0 check (rest_time >= 0),  -- rising / resting / chilling / fermenting
   servings     integer not null default 1 check (servings > 0),
   image_url    text,  -- first photo (kept for older readers)
   images       jsonb not null default '[]'::jsonb,  -- all photos, in order
